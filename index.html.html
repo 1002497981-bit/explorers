@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History Explorer Simulator</title>
+
+    <!-- Load React and ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Load Babel for in-browser JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom CSS Animations -->
+    <style>
+        body { margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        
+        @keyframes bounceIn { 
+          0% { transform: scale(0.8); opacity: 0; } 
+          50% { transform: scale(1.1); } 
+          100% { transform: scale(1); opacity: 1; } 
+        }
+        .animate-bounce-in { animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-8px); }
+          50% { transform: translateX(8px); }
+          75% { transform: translateX(-8px); }
+        }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+        
+        @keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin-slow { animation: spinSlow 4s linear infinite; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- ICON COMPONENTS ---
+        // To make this file 100% standalone, we define the necessary SVGs inline.
+        const Icon = ({ path, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{ __html: path }} />
+        );
+
+        const Ship = (p) => <Icon {...p} path='<path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 3.2-1.5 5.5-1.5s3 1.5 5.5 1.5c1.3 0 1.9-.5 2.5-1M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/><path d="M12 10v4"/><path d="M12 2v3"/>'/>;
+        const Compass = (p) => <Icon {...p} path='<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>'/>;
+        const Anchor = (p) => <Icon {...p} path='<circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/>'/>;
+        const PenTool = (p) => <Icon {...p} path='<path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.586 7.586"/><circle cx="11" cy="11" r="2"/>'/>;
+        const Apple = (p) => <Icon {...p} path='<path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/>'/>;
+        const MapIcon = (p) => <Icon {...p} path='<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>'/>;
+        const ArrowLeft = (p) => <Icon {...p} path='<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>'/>;
+        const CheckCircle2 = (p) => <Icon {...p} path='<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'/>;
+        const Play = (p) => <Icon {...p} path='<polygon points="5 3 19 12 5 21 5 3"/>'/>;
+        const AlertCircle = (p) => <Icon {...p} path='<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'/>;
+        const Trophy = (p) => <Icon {...p} path='<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>'/>;
+        const Star = (p) => <Icon {...p} path='<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'/>;
+        const ArrowRight = (p) => <Icon {...p} path='<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>'/>;
+        const Backpack = (p) => <Icon {...p} path='<path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10Z"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5"/><path d="M8 10h8"/><path d="M8 14h8"/>'/>;
+        const CloudLightning = (p) => <Icon {...p} path='<path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973"/><path d="m13 11-4 6h6l-4 6"/>'/>;
+        const Wind = (p) => <Icon {...p} path='<path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>'/>;
+        const MapPin = (p) => <Icon {...p} path='<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>'/>;
+        const Sparkles = (p) => <Icon {...p} path='<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>'/>;
+
+        const FIGURES = [
+            {
+                id: 'magellan',
+                name: 'Ferdinand Magellan',
+                type: 'explorer',
+                tagline: 'The First Global Voyage',
+                color: 'bg-blue-500',
+                darkColor: 'bg-blue-700',
+                icon: Ship,
+                intro: "Captain! We are attempting the impossible: a dangerous journey to sail completely around the world. Pack the fleet wisely.",
+                prepTask: "Pack your fleet for the global voyage",
+                prepItems: [
+                    { id: 'ships', name: '5 Stout Ships', icon: '⛵', correct: true },
+                    { id: 'lemons', name: 'Crates of Lemons', icon: '🍋', correct: true },
+                    { id: 'tv', name: 'A Television', icon: '📺', correct: false, msg: "There's no electricity in 1519!" },
+                    { id: 'maps', name: 'Star Maps', icon: '✨', correct: true }
+                ],
+                journey: [
+                    {
+                        fact: "We've sailed far from Spain. The crew is getting weak, their teeth hurt, and they are very sick with scurvy!",
+                        challenge: "Quick! What from our inventory should we give the crew to heal them?",
+                        options: ['Sugary Candy', 'Our Lemons', 'Dry Bread'],
+                        answer: 'Our Lemons',
+                        successMsg: "The vitamin C in the lemons saved the crew!"
+                    },
+                    {
+                        fact: "We are entering a massive, calm ocean. We are the first Europeans to cross it on a round-the-world trip.",
+                        challenge: "Think back to when we left port. How many ships did we start this crazy journey with?",
+                        options: ['Just 2', 'Exactly 5', 'An armada of 10'],
+                        answer: 'Exactly 5',
+                        successMsg: "Correct! Sadly, not all 5 will make it back, but history will remember us."
+                    }
+                ]
+            },
+            {
+                id: 'columbus',
+                name: 'Christopher Columbus',
+                type: 'explorer',
+                tagline: 'The Great Voyage of 1492',
+                color: 'bg-indigo-500',
+                darkColor: 'bg-indigo-700',
+                icon: Compass,
+                intro: "You have funding from Spain. Your crazy idea: sail West across the unknown ocean to reach Asia!",
+                prepTask: "Select ships and gear for 1492",
+                prepItems: [
+                    { id: 'pinta', name: 'The Pinta', icon: '⛵', correct: true },
+                    { id: 'santamaria', name: 'Santa Maria', icon: '🚢', correct: true },
+                    { id: 'submarine', name: 'A Submarine', icon: '🤿', correct: false, msg: "Submarines aren't invented yet!" },
+                    { id: 'compass', name: 'Magnetic Compass', icon: '🧭', correct: true }
+                ],
+                journey: [
+                    {
+                        fact: "The crew is terrified. We've been sailing for weeks and see no land. They think we are lost in the Atlantic Ocean.",
+                        challenge: "Which vast ocean are we currently crossing?",
+                        options: ['The Pacific Ocean', 'The Atlantic Ocean', 'The Indian Ocean'],
+                        answer: 'The Atlantic Ocean',
+                        successMsg: "Right! We must keep heading West across the Atlantic."
+                    },
+                    {
+                        fact: "Land ho! We've found land. I believe it is Asia, though history will eventually call it America.",
+                        challenge: "What year did we start this historic voyage?",
+                        options: ['1492', '1500', '1992'],
+                        answer: '1492',
+                        successMsg: "In 1492, Columbus sailed the ocean blue!"
+                    }
+                ]
+            },
+            {
+                id: 'cook',
+                name: 'Captain James Cook',
+                type: 'explorer',
+                tagline: 'The Famous Island Explorer',
+                color: 'bg-teal-500',
+                darkColor: 'bg-teal-700',
+                icon: Anchor,
+                intro: "Set sail to explore unknown islands and observe the stars. Keeping your crew healthy is your top priority.",
+                prepTask: "Gather supplies for a healthy voyage",
+                prepItems: [
+                    { id: 'onions', name: 'Sacks of Onions', icon: '🧅', correct: true },
+                    { id: 'fruit', name: 'Fresh Vegetables', icon: '🥬', correct: true },
+                    { id: 'soda', name: 'Sugary Soda', icon: '🥤', correct: false, msg: "Soda will rot their teeth!" },
+                    { id: 'telescope', name: 'Large Telescope', icon: '🔭', correct: true }
+                ],
+                journey: [
+                    {
+                        fact: "It's a long journey towards Hawaii and Antarctica. Other ships lose men to sickness, but you have a strict diet plan.",
+                        challenge: "What are you forcing the crew to eat to stay healthy?",
+                        options: ['Onions & Fruit', 'Just Ocean Water', 'Only Salted Meat'],
+                        answer: 'Onions & Fruit',
+                        successMsg: "The crew grumbles, but no one gets sick!"
+                    },
+                    {
+                        fact: "We've landed in Tahiti! The astronomers you brought along are setting up their equipment to look at the sky.",
+                        challenge: "Which planet did your astronomers come all this way to observe?",
+                        options: ['Mars', 'Venus', 'Jupiter'],
+                        answer: 'Venus',
+                        successMsg: "They successfully observed the transit of Venus!"
+                    }
+                ]
+            },
+            {
+                id: 'leonardo',
+                name: 'Leonardo da Vinci',
+                type: 'inventor',
+                tagline: 'The Magic Notebook',
+                color: 'bg-amber-500',
+                darkColor: 'bg-amber-700',
+                icon: PenTool,
+                intro: "Welcome to the Renaissance, Maestro! You are ready to paint masterpieces and sketch inventions that won't be built for centuries.",
+                prepTask: "Gather tools for your secret workshop",
+                prepItems: [
+                    { id: 'mirror', name: 'Hand Mirror', icon: '🪞', correct: true },
+                    { id: 'notebook', name: 'Leather Notebook', icon: '📓', correct: true },
+                    { id: 'laptop', name: 'A Laptop', icon: '💻', correct: false, msg: "Electricity? What is this magic?" },
+                    { id: 'paint', name: 'Oil Paints', icon: '🎨', correct: true }
+                ],
+                journey: [
+                    {
+                        fact: "You've been watching birds fly for hours. You rush back to your workshop to sketch a machine that can lift a human into the air.",
+                        challenge: "What modern flying machine are you trying to invent in your notes?",
+                        options: ['An Airplane', 'A Helicopter', 'A Space Rocket'],
+                        answer: 'A Helicopter',
+                        successMsg: "Your 'Aerial Screw' design is centuries ahead of its time!"
+                    },
+                    {
+                        fact: "People are snooping around your workshop! You need to make sure no one can steal the ideas from your notebook.",
+                        challenge: "How do you hide your secret writings?",
+                        options: ['Using invisible ink', 'Writing in a mirror', 'Burying the book'],
+                        answer: 'Writing in a mirror',
+                        successMsg: "Brilliant! You write backward so it can only be read with your mirror."
+                    }
+                ]
+            },
+            {
+                id: 'newton',
+                name: 'Isaac Newton',
+                type: 'inventor',
+                tagline: 'The Story of Gravity',
+                color: 'bg-red-500',
+                darkColor: 'bg-red-700',
+                icon: Apple,
+                intro: "You are sitting in an orchard in England, thinking deeply about mathematics, physics, and how the universe functions.",
+                prepTask: "Select the tools of discovery",
+                prepItems: [
+                    { id: 'apple', name: 'A Ripe Apple', icon: '🍎', correct: true },
+                    { id: 'prism', name: 'Glass Prism', icon: '📐', correct: true },
+                    { id: 'calculator', name: 'Pocket Calculator', icon: '🖩', correct: false, msg: "You have to do the math in your head!" },
+                    { id: 'telescope', name: 'Curved Mirrors', icon: '🪞', correct: true }
+                ],
+                journey: [
+                    {
+                        fact: "Thump! Something just fell from the tree and hit the ground next to you. It sparks an incredible idea about why things fall down, not up.",
+                        challenge: "What object helped you think about the laws of gravity?",
+                        options: ['A falling orange', 'A falling apple', 'A falling rock'],
+                        answer: 'A falling apple',
+                        successMsg: "The apple led to the Universal Law of Gravitation!"
+                    },
+                    {
+                        fact: "Now you are inside, studying a beam of sunlight coming through the window. You want to know what light is made of.",
+                        challenge: "What tool do you use to split the light into a rainbow?",
+                        options: ['A magnifying glass', 'A glass prism', 'A bucket of water'],
+                        answer: 'A glass prism',
+                        successMsg: "You proved that white light contains all the colors of the rainbow!"
+                    }
+                ]
+            },
+            {
+                id: 'marcopolo',
+                name: 'Marco Polo',
+                type: 'explorer',
+                tagline: 'The Great Adventure',
+                color: 'bg-orange-500',
+                darkColor: 'bg-orange-700',
+                icon: MapIcon,
+                intro: "You are leaving Venice to travel further East than most Europeans have ever gone. A massive overland journey awaits.",
+                prepTask: "Pack for the overland trek",
+                prepItems: [
+                    { id: 'camels', name: 'Pack Camels', icon: '🐫', correct: true },
+                    { id: 'silk', name: 'Trading Goods', icon: '👘', correct: true },
+                    { id: 'car', name: 'An Off-road Jeep', icon: '🚙', correct: false, msg: "Jeeps won't exist for 600 years!" },
+                    { id: 'spices', name: 'Gold for Spices', icon: '💰', correct: true }
+                ],
+                journey: [
+                    {
+                        fact: "The journey is long and dangerous. You are crossing deserts and mountains along a famous trading network to reach the East.",
+                        challenge: "Which famous route are you traveling on?",
+                        options: ['The Gold Trail', 'The Silk Road', 'The Spice Path'],
+                        answer: 'The Silk Road',
+                        successMsg: "The Silk Road connects Europe all the way to China."
+                    },
+                    {
+                        fact: "You have finally arrived! You meet the great ruler Kublai Khan and will live in his court for many years, writing stories to take back home.",
+                        challenge: "What massive continent have you just explored?",
+                        options: ['Africa', 'Asia', 'South America'],
+                        answer: 'Asia',
+                        successMsg: "Your stories of Asia will amaze Europe and inspire future explorers!"
+                    }
+                ]
+            }
+        ];
+
+        function HistorySimulator() {
+            const [screen, setScreen] = useState('home'); 
+            const [activeFigure, setActiveFigure] = useState(null);
+            
+            // Prep State
+            const [inventory, setInventory] = useState([]);
+            const [prepError, setPrepError] = useState("");
+
+            // Journey State
+            const [journeyStep, setJourneyStep] = useState(0);
+            const [showEvent, setShowEvent] = useState(false);
+            const [shake, setShake] = useState(false);
+            
+            // Score State
+            const [mistakes, setMistakes] = useState(0);
+            const [completedSims, setCompletedSims] = useState({});
+
+            const startGame = (figureId) => {
+                const figure = FIGURES.find(f => f.id === figureId);
+                setActiveFigure(figure);
+                setInventory([]);
+                setPrepError("");
+                setJourneyStep(0);
+                setMistakes(0);
+                setShowEvent(false);
+                setScreen('prep');
+            };
+
+            const goHome = () => {
+                setScreen('home');
+                setActiveFigure(null);
+            };
+
+            const toggleInventoryItem = (item) => {
+                setPrepError("");
+                if (inventory.find(i => i.id === item.id)) {
+                    setInventory(inventory.filter(i => i.id !== item.id));
+                } else {
+                    setInventory([...inventory, item]);
+                }
+            };
+
+            const launchJourney = () => {
+                const requiredItems = activeFigure.prepItems.filter(i => i.correct);
+                const hasAllRequired = requiredItems.every(req => inventory.some(inv => inv.id === req.id));
+                
+                const badItem = inventory.find(inv => !inv.correct);
+
+                if (badItem) {
+                    setPrepError(badItem.msg || "You packed something that doesn't belong in this time period!");
+                    setShake(true);
+                    setTimeout(() => setShake(false), 500);
+                    return;
+                }
+
+                if (!hasAllRequired) {
+                    setPrepError("You are missing some crucial supplies! Keep packing.");
+                    setShake(true);
+                    setTimeout(() => setShake(false), 500);
+                    return;
+                }
+
+                setScreen('journey');
+                setTimeout(() => {
+                    setShowEvent(true);
+                }, 1500);
+            };
+
+            const handleAnswer = (answer) => {
+                const currentEvent = activeFigure.journey[journeyStep];
+                
+                if (answer === currentEvent.answer) {
+                    setShowEvent(false);
+                    if (journeyStep < activeFigure.journey.length - 1) {
+                        setTimeout(() => {
+                            setJourneyStep(prev => prev + 1);
+                            setTimeout(() => setShowEvent(true), 1500);
+                        }, 500);
+                    } else {
+                        setTimeout(() => {
+                            const finalScore = Math.max(3 - mistakes, 1);
+                            setCompletedSims({...completedSims, [activeFigure.id]: finalScore});
+                            setScreen('result');
+                        }, 1000);
+                    }
+                } else {
+                    setMistakes(prev => prev + 1);
+                    setShake(true);
+                    setTimeout(() => setShake(false), 500);
+                }
+            };
+
+            const renderHome = () => (
+                <div className="max-w-6xl mx-auto p-4 md:p-8 animate-fade-in">
+                    <div className="text-center space-y-4 mb-12">
+                        <div className="inline-flex items-center justify-center p-4 bg-blue-100 rounded-full mb-4">
+                            <MapPin className="w-10 h-10 text-blue-600" />
+                        </div>
+                        <h1 className="text-4xl md:text-6xl font-extrabold text-slate-800 tracking-tight">
+                            History <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Simulator</span>
+                        </h1>
+                        <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto">
+                            Don't just read history—experience it. Pack your gear, overcome historical obstacles, and make discoveries.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {FIGURES.map((figure) => {
+                            const IconCmp = figure.icon;
+                            const stars = completedSims[figure.id];
+                            
+                            return (
+                                <button
+                                    key={figure.id}
+                                    onClick={() => startGame(figure.id)}
+                                    className="group relative bg-white rounded-3xl p-6 shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-left flex flex-col h-full overflow-hidden"
+                                >
+                                    <div className={`absolute top-0 left-0 w-full h-3 ${figure.color} transition-all group-hover:h-4`} />
+                                    
+                                    <div className="flex justify-between items-start mb-6 pt-2">
+                                        <div className={`p-4 rounded-2xl ${figure.color} bg-opacity-10 group-hover:scale-110 transition-transform`}>
+                                            <IconCmp className={`w-8 h-8 ${figure.color.replace('bg-', 'text-')}`} />
+                                        </div>
+                                        {stars && (
+                                            <div className="flex items-center space-x-1 bg-amber-100 text-amber-600 px-3 py-1.5 rounded-full">
+                                                {[...Array(3)].map((_, i) => (
+                                                    <Star key={i} className={`w-4 h-4 ${i < stars ? 'fill-current' : 'text-amber-200'}`} />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    <h3 className="text-2xl font-bold text-slate-800 mb-2">{figure.name}</h3>
+                                    <p className="text-sm font-medium text-slate-500 mb-6">{figure.tagline}</p>
+                                    
+                                    <div className={`mt-auto inline-flex items-center font-bold ${figure.color.replace('bg-', 'text-')} group-hover:translate-x-2 transition-transform`}>
+                                        {stars ? 'Replay Mission' : 'Start Mission'} <Play className="w-4 h-4 ml-2 fill-current" />
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+
+            const renderPrep = () => {
+                const ActiveIcon = activeFigure.icon;
+                return (
+                <div className="max-w-5xl mx-auto p-4 md:p-8 animate-fade-in">
+                    <button onClick={goHome} className="flex items-center text-slate-500 hover:text-slate-800 mb-6 font-medium transition-colors">
+                        <ArrowLeft className="w-5 h-5 mr-2" /> Abort Mission
+                    </button>
+
+                    <div className="grid md:grid-cols-3 gap-6">
+                        <div className={`md:col-span-1 rounded-3xl p-6 text-white ${activeFigure.color} shadow-lg flex flex-col`}>
+                            <ActiveIcon className="w-12 h-12 mb-4 opacity-80" />
+                            <h2 className="text-3xl font-extrabold mb-2">{activeFigure.name}</h2>
+                            <p className="text-lg opacity-90 mb-6 flex-grow">{activeFigure.intro}</p>
+                            
+                            <div className="bg-black/20 p-4 rounded-xl backdrop-blur-sm">
+                                <h4 className="font-bold mb-2 flex items-center"><Backpack className="w-5 h-5 mr-2"/> Your Inventory</h4>
+                                <div className="flex flex-wrap gap-2 min-h-[60px]">
+                                    {inventory.length === 0 ? (
+                                        <span className="text-white/60 text-sm italic">Backpack is empty...</span>
+                                    ) : (
+                                        inventory.map(item => (
+                                            <span key={item.id} className="bg-white text-slate-800 px-3 py-1 rounded-full text-sm font-bold shadow-sm animate-bounce-in">
+                                                {item.icon} {item.name}
+                                            </span>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={`md:col-span-2 bg-white rounded-3xl p-6 md:p-8 shadow-lg border-2 ${shake ? 'border-red-400 animate-shake' : 'border-slate-100'}`}>
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-2xl font-bold text-slate-800">Select Supplies</h3>
+                                <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-sm font-bold">
+                                    Click to pack/unpack
+                                </span>
+                            </div>
+
+                            {prepError && (
+                                <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 flex items-start animate-fade-in">
+                                    <AlertCircle className="w-6 h-6 mr-3 flex-shrink-0" />
+                                    <p className="font-medium">{prepError}</p>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4 mb-8">
+                                {activeFigure.prepItems.map((item) => {
+                                    const isPacked = inventory.some(i => i.id === item.id);
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => toggleInventoryItem(item)}
+                                            className={`relative p-4 md:p-6 rounded-2xl border-2 text-center transition-all duration-200 transform hover:-translate-y-1 ${
+                                                isPacked 
+                                                    ? `${activeFigure.color} border-transparent text-white shadow-md` 
+                                                    : 'border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-700'
+                                            }`}
+                                        >
+                                            {isPacked && <CheckCircle2 className="absolute top-3 right-3 w-5 h-5 text-white" />}
+                                            <div className="text-4xl mb-3">{item.icon}</div>
+                                            <div className="font-bold">{item.name}</div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <button
+                                onClick={launchJourney}
+                                className={`w-full py-5 rounded-2xl font-extrabold text-xl text-white shadow-lg transition-all ${
+                                    inventory.length > 0 
+                                        ? `${activeFigure.darkColor} hover:opacity-90 hover:scale-[1.02]` 
+                                        : 'bg-slate-300 cursor-not-allowed'
+                                }`}
+                            >
+                                Launch Expedition 🚀
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                );
+            };
+
+            const renderJourney = () => {
+                const totalSteps = activeFigure.journey.length;
+                const progressPercent = (journeyStep / totalSteps) * 100;
+                const currentEvent = activeFigure.journey[journeyStep];
+                const ActiveIcon = activeFigure.icon;
+
+                return (
+                    <div className="max-w-5xl mx-auto p-4 md:p-8 animate-fade-in min-h-[80vh] flex flex-col">
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="text-2xl font-bold text-slate-800 flex items-center">
+                                <ActiveIcon className={`w-8 h-8 mr-3 ${activeFigure.color.replace('bg-', 'text-')}`} />
+                                The Journey
+                            </h2>
+                            <div className="flex space-x-2">
+                                {[...Array(totalSteps)].map((_, i) => (
+                                    <div key={i} className={`w-3 h-3 rounded-full ${i <= journeyStep ? activeFigure.color : 'bg-slate-200'}`} />
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="relative bg-slate-100 rounded-3xl p-8 flex-grow flex items-center justify-center overflow-hidden border border-slate-200 shadow-inner min-h-[400px]">
+                            <div className="absolute inset-0 opacity-10 pointer-events-none flex justify-around items-center">
+                                {activeFigure.type === 'explorer' ? (
+                                    <><Wind className="w-32 h-32" /><CloudLightning className="w-24 h-24 mt-32" /><Wind className="w-20 h-20 mb-20" /></>
+                                ) : (
+                                    <><Sparkles className="w-20 h-20" /><PenTool className="w-32 h-32" /><Sparkles className="w-16 h-16 mt-20" /></>
+                                )}
+                            </div>
+
+                            <div className="absolute md:left-12 md:right-12 md:top-1/2 md:h-2 md:w-auto left-1/2 top-12 bottom-12 w-2 -translate-x-1/2 md:translate-x-0 md:-translate-y-1/2 bg-slate-300 rounded-full"></div>
+                            
+                            <div 
+                                className={`absolute md:left-12 md:top-1/2 md:h-2 left-1/2 top-12 w-2 md:w-auto -translate-x-1/2 md:translate-x-0 md:-translate-y-1/2 ${activeFigure.color} rounded-full transition-all duration-1000 ease-in-out`}
+                                style={{ 
+                                    ...(window.innerWidth >= 768 
+                                        ? { width: `calc(${progressPercent}% - 48px)` } 
+                                        : { height: `calc(${progressPercent}% - 48px)` })
+                                }}
+                            ></div>
+
+                            <div 
+                                className={`absolute flex items-center justify-center w-16 h-16 rounded-full ${activeFigure.darkColor} text-white shadow-xl border-4 border-white z-10 transition-all duration-1000 ease-in-out ${showEvent ? 'animate-pulse' : 'animate-bounce'}`}
+                                style={{
+                                    ...(window.innerWidth >= 768 
+                                        ? { left: `calc(3rem + ${progressPercent}% * 0.85)`, top: '50%', transform: 'translate(-50%, -50%)' }
+                                        : { top: `calc(3rem + ${progressPercent}% * 0.85)`, left: '50%', transform: 'translate(-50%, -50%)' })
+                                }}
+                            >
+                                <ActiveIcon className="w-8 h-8" />
+                            </div>
+
+                            {showEvent && currentEvent && (
+                                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-20 animate-fade-in">
+                                    <div className={`bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border-b-8 ${activeFigure.darkColor.replace('bg-', 'border-')} ${shake ? 'animate-shake' : ''}`}>
+                                        
+                                        <div className="flex items-center space-x-3 mb-4 text-amber-600 font-bold">
+                                            <AlertCircle className="w-6 h-6" />
+                                            <span>Encounter!</span>
+                                        </div>
+
+                                        <p className="text-xl md:text-2xl text-slate-800 font-bold mb-6 leading-relaxed">
+                                            {currentEvent.fact}
+                                        </p>
+
+                                        <div className="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-100">
+                                            <p className="font-semibold text-slate-600 mb-4">{currentEvent.challenge}</p>
+                                            <div className="space-y-3">
+                                                {currentEvent.options.map((opt, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => handleAnswer(opt)}
+                                                        className={`w-full text-left p-4 rounded-xl border-2 font-bold text-slate-700 transition-all group flex justify-between items-center ${
+                                                            shake ? 'border-slate-200' : 'border-slate-200 hover:border-blue-500 hover:bg-blue-50'
+                                                        }`}
+                                                    >
+                                                        {opt}
+                                                        <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {mistakes > 0 && shake && (
+                                            <p className="text-center text-red-500 font-bold animate-pulse">Incorrect! Try another option.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {!showEvent && journeyStep < totalSteps && (
+                                <div className="absolute bottom-8 right-8 bg-white/90 backdrop-blur px-6 py-3 rounded-full font-bold text-slate-600 shadow-sm animate-pulse">
+                                    Traveling...
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
+            const renderResult = () => {
+                const stars = Math.max(3 - mistakes, 1);
+
+                return (
+                    <div className="max-w-2xl mx-auto p-4 md:p-8 animate-fade-in mt-10">
+                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-12 text-center relative overflow-hidden">
+                            
+                            <div className={`absolute top-0 left-0 w-full h-4 ${activeFigure.color}`} />
+                            
+                            <div className="flex justify-center mb-8">
+                                <div className={`p-8 rounded-full ${stars === 3 ? 'bg-amber-100 text-amber-500' : 'bg-blue-100 text-blue-500'} relative`}>
+                                    <Trophy className="w-24 h-24" />
+                                    {stars === 3 && <Sparkles className="absolute -top-2 -right-2 w-10 h-10 text-amber-400 animate-spin-slow" />}
+                                </div>
+                            </div>
+                            
+                            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-800 mb-4">
+                                Mission Accomplished!
+                            </h2>
+                            
+                            <p className="text-xl text-slate-600 mb-8">
+                                You successfully guided {activeFigure.name} through history.
+                            </p>
+
+                            <div className="flex justify-center space-x-2 mb-10 bg-slate-50 p-6 rounded-2xl inline-flex mx-auto">
+                                {[...Array(3)].map((_, i) => (
+                                    <Star 
+                                        key={i} 
+                                        className={`w-12 h-12 transition-all duration-500 delay-${i*100} ${
+                                            i < stars ? 'fill-current text-amber-400 scale-110' : 'text-slate-200'
+                                        }`} 
+                                    />
+                                ))}
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row justify-center gap-4">
+                                <button
+                                    onClick={() => startGame(activeFigure.id)}
+                                    className="px-8 py-4 rounded-2xl border-2 border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                                >
+                                    Play Again
+                                </button>
+                                <button
+                                    onClick={goHome}
+                                    className={`px-8 py-4 rounded-2xl font-extrabold text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all ${activeFigure.darkColor}`}
+                                >
+                                    Return to Headquarters
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-200 pb-12 overflow-x-hidden">
+                    <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+                        <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+                            <button 
+                                className="flex items-center space-x-3 group"
+                                onClick={goHome}
+                            >
+                                <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-2 rounded-xl group-hover:scale-105 transition-transform shadow-md">
+                                    <MapPin className="w-5 h-5" />
+                                </div>
+                                <span className="font-extrabold text-xl tracking-tight text-slate-800">History<span className="text-blue-600">Sim</span></span>
+                            </button>
+                            
+                            {activeFigure && screen !== 'home' && (
+                                <div className="hidden sm:flex items-center space-x-2 text-sm font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200">
+                                    {React.createElement(activeFigure.icon, { className: `w-4 h-4 ${activeFigure.color.replace('bg-', 'text-')}` })}
+                                    <span>{activeFigure.name}</span>
+                                </div>
+                            )}
+                        </div>
+                    </nav>
+
+                    <main className="w-full">
+                        {screen === 'home' && renderHome()}
+                        {screen === 'prep' && renderPrep()}
+                        {screen === 'journey' && renderJourney()}
+                        {screen === 'result' && renderResult()}
+                    </main>
+                </div>
+            );
+        }
+
+        // Mount the application
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<HistorySimulator />);
+    </script>
+</body>
+</html>
