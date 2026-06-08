@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>History Explorer Simulator</title>
+    <title>סימולטור חוקרי היסטוריה</title>
 
-    <!-- Load React and ReactDOM -->
+    <!-- טעינת React ו-ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     
-    <!-- Load Babel for in-browser JSX compilation -->
+    <!-- טעינת Babel לקימפול הקוד בדפדפן -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Load Tailwind CSS -->
+    <!-- טעינת Tailwind CSS לעיצוב -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Custom CSS Animations -->
+    <!-- אנימציות CSS מותאמות אישית -->
     <style>
         body { margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -40,14 +40,13 @@
         .animate-spin-slow { animation: spinSlow 4s linear infinite; }
     </style>
 </head>
-<body>
+<body class="bg-slate-50">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // --- ICON COMPONENTS ---
-        // To make this file 100% standalone, we define the necessary SVGs inline.
+        // --- רכיבי אייקונים ---
         const Icon = ({ path, className = "" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{ __html: path }} />
         );
@@ -58,215 +57,219 @@
         const PenTool = (p) => <Icon {...p} path='<path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.586 7.586"/><circle cx="11" cy="11" r="2"/>'/>;
         const Apple = (p) => <Icon {...p} path='<path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/>'/>;
         const MapIcon = (p) => <Icon {...p} path='<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>'/>;
-        const ArrowLeft = (p) => <Icon {...p} path='<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>'/>;
+        
+        // חיצים מותאמים לכיוון ימין-שמאל
+        const ArrowBack = (p) => <Icon {...p} path='<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>'/>;
+        const ArrowForward = (p) => <Icon {...p} path='<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>'/>;
+        
         const CheckCircle2 = (p) => <Icon {...p} path='<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'/>;
         const Play = (p) => <Icon {...p} path='<polygon points="5 3 19 12 5 21 5 3"/>'/>;
         const AlertCircle = (p) => <Icon {...p} path='<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'/>;
         const Trophy = (p) => <Icon {...p} path='<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>'/>;
         const Star = (p) => <Icon {...p} path='<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'/>;
-        const ArrowRight = (p) => <Icon {...p} path='<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>'/>;
         const Backpack = (p) => <Icon {...p} path='<path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10Z"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5"/><path d="M8 10h8"/><path d="M8 14h8"/>'/>;
         const CloudLightning = (p) => <Icon {...p} path='<path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973"/><path d="m13 11-4 6h6l-4 6"/>'/>;
         const Wind = (p) => <Icon {...p} path='<path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>'/>;
         const MapPin = (p) => <Icon {...p} path='<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>'/>;
         const Sparkles = (p) => <Icon {...p} path='<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>'/>;
 
+        // --- נתוני הסימולטור ---
         const FIGURES = [
             {
                 id: 'magellan',
-                name: 'Ferdinand Magellan',
+                name: 'פרדיננד מגלן',
                 type: 'explorer',
-                tagline: 'The First Global Voyage',
+                tagline: 'המסע העולמי הראשון',
                 color: 'bg-blue-500',
                 darkColor: 'bg-blue-700',
                 icon: Ship,
-                intro: "Captain! We are attempting the impossible: a dangerous journey to sail completely around the world. Pack the fleet wisely.",
-                prepTask: "Pack your fleet for the global voyage",
+                intro: "קפטן! אנו מנסים את הבלתי אפשרי: מסע מסוכן להקיף את העולם. ארוז את הצי בחכמה לדרך ארוכה במיוחד.",
+                prepTask: "ארוז את הצי למסע העולמי",
                 prepItems: [
-                    { id: 'ships', name: '5 Stout Ships', icon: '⛵', correct: true },
-                    { id: 'lemons', name: 'Crates of Lemons', icon: '🍋', correct: true },
-                    { id: 'tv', name: 'A Television', icon: '📺', correct: false, msg: "There's no electricity in 1519!" },
-                    { id: 'maps', name: 'Star Maps', icon: '✨', correct: true }
+                    { id: 'ships', name: '5 ספינות', icon: '⛵', correct: true },
+                    { id: 'lemons', name: 'ארגזי לימונים', icon: '🍋', correct: true },
+                    { id: 'tv', name: 'טלוויזיה', icon: '📺', correct: false, msg: "אין חשמל בשנת 1519! אין מה לעשות עם זה." },
+                    { id: 'maps', name: 'מפות כוכבים', icon: '✨', correct: true }
                 ],
                 journey: [
                     {
-                        fact: "We've sailed far from Spain. The crew is getting weak, their teeth hurt, and they are very sick with scurvy!",
-                        challenge: "Quick! What from our inventory should we give the crew to heal them?",
-                        options: ['Sugary Candy', 'Our Lemons', 'Dry Bread'],
-                        answer: 'Our Lemons',
-                        successMsg: "The vitamin C in the lemons saved the crew!"
+                        fact: "הפלגנו הרחק מספרד. הצוות נחלש, השיניים כואבות, והם חולים מאוד במחלת הצפדינה!",
+                        challenge: "מהר! מה מהציוד שלנו עלינו לתת לצוות כדי לרפא אותם?",
+                        options: ['ממתקים מתוקים', 'הלימונים שלנו', 'לחם יבש'],
+                        answer: 'הלימונים שלנו',
+                        successMsg: "ויטמין ה-C שבלימונים הציל את חיי הצוות!"
                     },
                     {
-                        fact: "We are entering a massive, calm ocean. We are the first Europeans to cross it on a round-the-world trip.",
-                        challenge: "Think back to when we left port. How many ships did we start this crazy journey with?",
-                        options: ['Just 2', 'Exactly 5', 'An armada of 10'],
-                        answer: 'Exactly 5',
-                        successMsg: "Correct! Sadly, not all 5 will make it back, but history will remember us."
+                        fact: "אנו נכנסים לאוקיינוס שקט וענק. אנו האירופאים הראשונים שחוצים אותו במסע סביב העולם.",
+                        challenge: "חזור במחשבותיך אחורה לרגע שעזבנו את הנמל. עם כמה ספינות התחלנו את המסע המטורף הזה?",
+                        options: ['רק 2 ספינות', 'בדיוק 5 ספינות', 'צי של 10 ספינות'],
+                        answer: 'בדיוק 5 ספינות',
+                        successMsg: "נכון! למרבה הצער, לא כל ה-5 יחזרו, אך ההיסטוריה תזכור אותנו לתמיד."
                     }
                 ]
             },
             {
                 id: 'columbus',
-                name: 'Christopher Columbus',
+                name: 'כריסטופר קולומבוס',
                 type: 'explorer',
-                tagline: 'The Great Voyage of 1492',
+                tagline: 'המסע הגדול של 1492',
                 color: 'bg-indigo-500',
                 darkColor: 'bg-indigo-700',
                 icon: Compass,
-                intro: "You have funding from Spain. Your crazy idea: sail West across the unknown ocean to reach Asia!",
-                prepTask: "Select ships and gear for 1492",
+                intro: "קיבלת מימון ממלכת ספרד. הרעיון המטורף שלך: להפליג מערבה אל הלא-נודע כדי להגיע לאסיה!",
+                prepTask: "בחר ספינות וציוד לשנת 1492",
                 prepItems: [
-                    { id: 'pinta', name: 'The Pinta', icon: '⛵', correct: true },
-                    { id: 'santamaria', name: 'Santa Maria', icon: '🚢', correct: true },
-                    { id: 'submarine', name: 'A Submarine', icon: '🤿', correct: false, msg: "Submarines aren't invented yet!" },
-                    { id: 'compass', name: 'Magnetic Compass', icon: '🧭', correct: true }
+                    { id: 'pinta', name: 'הפינטה', icon: '⛵', correct: true },
+                    { id: 'santamaria', name: 'סנטה מריה', icon: '🚢', correct: true },
+                    { id: 'submarine', name: 'צוללת', icon: '🤿', correct: false, msg: "צוללות טרם הומצאו! נצטרך להישאר מעל פני המים." },
+                    { id: 'compass', name: 'מצפן מגנטי', icon: '🧭', correct: true }
                 ],
                 journey: [
                     {
-                        fact: "The crew is terrified. We've been sailing for weeks and see no land. They think we are lost in the Atlantic Ocean.",
-                        challenge: "Which vast ocean are we currently crossing?",
-                        options: ['The Pacific Ocean', 'The Atlantic Ocean', 'The Indian Ocean'],
-                        answer: 'The Atlantic Ocean',
-                        successMsg: "Right! We must keep heading West across the Atlantic."
+                        fact: "הצוות מבועת לחלוטין. אנחנו מפליגים כבר שבועות ולא רואים יבשה באופק. הם חושבים שאנחנו אבודים.",
+                        challenge: "איזה אוקיינוס עצום אנו חוצים כעת?",
+                        options: ['האוקיינוס השקט', 'האוקיינוס האטלנטי', 'האוקיינוס ההודי'],
+                        answer: 'האוקיינוס האטלנטי',
+                        successMsg: "נכון! עלינו להמשיך להפליג מערבה דרך האוקיינוס האטלנטי."
                     },
                     {
-                        fact: "Land ho! We've found land. I believe it is Asia, though history will eventually call it America.",
-                        challenge: "What year did we start this historic voyage?",
+                        fact: "יבשה באופק! סוף סוף מצאנו אדמה. אני מאמין שזו אסיה, למרות שההיסטוריה תקרא לה לבסוף אמריקה.",
+                        challenge: "באיזו שנה התחלנו את המסע ההיסטורי הזה?",
                         options: ['1492', '1500', '1992'],
                         answer: '1492',
-                        successMsg: "In 1492, Columbus sailed the ocean blue!"
+                        successMsg: "בשנת 1492 קולומבוס חצה את האוקיינוס הכחול!"
                     }
                 ]
             },
             {
                 id: 'cook',
-                name: 'Captain James Cook',
+                name: "קפטן ג'יימס קוק",
                 type: 'explorer',
-                tagline: 'The Famous Island Explorer',
+                tagline: 'חוקר האיים המפורסם',
                 color: 'bg-teal-500',
                 darkColor: 'bg-teal-700',
                 icon: Anchor,
-                intro: "Set sail to explore unknown islands and observe the stars. Keeping your crew healthy is your top priority.",
-                prepTask: "Gather supplies for a healthy voyage",
+                intro: "צא לחקור איים לא מוכרים ולתעד תגליות. מעל הכל, שמירה על בריאות הצוות היא בעדיפות עליונה.",
+                prepTask: "אסוף ציוד למסע בריא",
                 prepItems: [
-                    { id: 'onions', name: 'Sacks of Onions', icon: '🧅', correct: true },
-                    { id: 'fruit', name: 'Fresh Vegetables', icon: '🥬', correct: true },
-                    { id: 'soda', name: 'Sugary Soda', icon: '🥤', correct: false, msg: "Soda will rot their teeth!" },
-                    { id: 'telescope', name: 'Large Telescope', icon: '🔭', correct: true }
+                    { id: 'onions', name: 'שקי בצלים', icon: '🧅', correct: true },
+                    { id: 'fruit', name: 'ירקות ופירות', icon: '🥬', correct: true },
+                    { id: 'soda', name: 'משקאות מוגזים', icon: '🥤', correct: false, msg: "המשקה המוגז רק יהרוס להם את השיניים ולא יתרום לבריאות!" },
+                    { id: 'telescope', name: 'טלסקופ חלל', icon: '🔭', correct: true }
                 ],
                 journey: [
                     {
-                        fact: "It's a long journey towards Hawaii and Antarctica. Other ships lose men to sickness, but you have a strict diet plan.",
-                        challenge: "What are you forcing the crew to eat to stay healthy?",
-                        options: ['Onions & Fruit', 'Just Ocean Water', 'Only Salted Meat'],
-                        answer: 'Onions & Fruit',
-                        successMsg: "The crew grumbles, but no one gets sick!"
+                        fact: "זהו מסע ארוך לעבר הוואי ואנטארקטיקה. ספינות אחרות מאבדות מלחים בגלל מחלות, אבל לך יש תוכנית תזונה מוקפדת.",
+                        challenge: "מה אתה מכריח את הצוות לאכול כדי שיישארו בריאים?",
+                        options: ['בצלים ופירות טריים', 'רק מי ים תפלים', 'רק בשר מומלח'],
+                        answer: 'בצלים ופירות טריים',
+                        successMsg: "הצוות אולי מתלונן על הטעם, אבל אף אחד לא חולה!"
                     },
                     {
-                        fact: "We've landed in Tahiti! The astronomers you brought along are setting up their equipment to look at the sky.",
-                        challenge: "Which planet did your astronomers come all this way to observe?",
-                        options: ['Mars', 'Venus', 'Jupiter'],
-                        answer: 'Venus',
-                        successMsg: "They successfully observed the transit of Venus!"
+                        fact: "נחתנו בטהיטי! האסטרונומים שהבאת איתך פורקים ומקימים את הציוד שלהם כדי להסתכל אל השמיים.",
+                        challenge: "באיזה כוכב לכת האסטרונומים שלך באו לצפות מכל כך רחוק?",
+                        options: ['מאדים', 'נוגה (ונוס)', 'צדק'],
+                        answer: 'נוגה (ונוס)',
+                        successMsg: "תצפית מעולה! הם צפו בהצלחה במעבר של כוכב הלכת נוגה."
                     }
                 ]
             },
             {
                 id: 'leonardo',
-                name: 'Leonardo da Vinci',
+                name: "לאונרדו דה וינצ'י",
                 type: 'inventor',
-                tagline: 'The Magic Notebook',
+                tagline: 'מחברת הקסם',
                 color: 'bg-amber-500',
                 darkColor: 'bg-amber-700',
                 icon: PenTool,
-                intro: "Welcome to the Renaissance, Maestro! You are ready to paint masterpieces and sketch inventions that won't be built for centuries.",
-                prepTask: "Gather tools for your secret workshop",
+                intro: "ברוכים הבאים לתקופת הרנסאנס, מאסטרו! אתה מוכן לצייר יצירות מופת ולשרטט המצאות שיקדימו את זמנן במאות שנים.",
+                prepTask: "אסוף כלים עבור סדנת הסתרים שלך",
                 prepItems: [
-                    { id: 'mirror', name: 'Hand Mirror', icon: '🪞', correct: true },
-                    { id: 'notebook', name: 'Leather Notebook', icon: '📓', correct: true },
-                    { id: 'laptop', name: 'A Laptop', icon: '💻', correct: false, msg: "Electricity? What is this magic?" },
-                    { id: 'paint', name: 'Oil Paints', icon: '🎨', correct: true }
+                    { id: 'mirror', name: 'מראת יד קטנה', icon: '🪞', correct: true },
+                    { id: 'notebook', name: 'מחברת עור עבה', icon: '📓', correct: true },
+                    { id: 'laptop', name: 'מחשב נייד', icon: '💻', correct: false, msg: "חשמל? אינטרנט? איזה סוג של קסם זה? זה עדיין לא קיים." },
+                    { id: 'paint', name: 'צבעי שמן', icon: '🎨', correct: true }
                 ],
                 journey: [
                     {
-                        fact: "You've been watching birds fly for hours. You rush back to your workshop to sketch a machine that can lift a human into the air.",
-                        challenge: "What modern flying machine are you trying to invent in your notes?",
-                        options: ['An Airplane', 'A Helicopter', 'A Space Rocket'],
-                        answer: 'A Helicopter',
-                        successMsg: "Your 'Aerial Screw' design is centuries ahead of its time!"
+                        fact: "אתה צופה בציפורים עפות בשמיים כבר שעות. הרעיון מבזיק, ואתה ממהר לסדנה לשרטט מכונה שתוכל להרים אדם לאוויר.",
+                        challenge: "איזו מכונה מעופפת (שקיימת היום) אתה מנסה להמציא ברשימות שלך?",
+                        options: ['מטוס סילון', 'מסוק (הליקופטר)', 'טיל לחלל'],
+                        answer: 'מסוק (הליקופטר)',
+                        successMsg: "עיצוב 'הבורג האווירי' שלך הוא פשוט גאוני ומקדים את זמנו במאות שנים!"
                     },
                     {
-                        fact: "People are snooping around your workshop! You need to make sure no one can steal the ideas from your notebook.",
-                        challenge: "How do you hide your secret writings?",
-                        options: ['Using invisible ink', 'Writing in a mirror', 'Burying the book'],
-                        answer: 'Writing in a mirror',
-                        successMsg: "Brilliant! You write backward so it can only be read with your mirror."
+                        fact: "אנשים מרחרחים ומציצים לתוך הסדנה שלך! אתה חייב לוודא שאף אחד לא יוכל לקרוא ולגנוב את הרעיונות מתוך המחברת שלך.",
+                        challenge: "כיצד אתה מסתיר את הכתבים הסודיים שלך?",
+                        options: ['משתמש בדיו סמוי', 'כותב בכתב ראי', 'קובר את הספר בחצר'],
+                        answer: 'כותב בכתב ראי',
+                        successMsg: "חכם מאוד! אתה כותב הפוך כך שניתן לקרוא את הטקסט רק אם מציבים אותו מול המראה שלך."
                     }
                 ]
             },
             {
                 id: 'newton',
-                name: 'Isaac Newton',
+                name: 'אייזק ניוטון',
                 type: 'inventor',
-                tagline: 'The Story of Gravity',
+                tagline: 'סיפורו של כוח המשיכה',
                 color: 'bg-red-500',
                 darkColor: 'bg-red-700',
                 icon: Apple,
-                intro: "You are sitting in an orchard in England, thinking deeply about mathematics, physics, and how the universe functions.",
-                prepTask: "Select the tools of discovery",
+                intro: "אתה יושב במטע באנגליה, שקוע במחשבות עמוקות על מתמטיקה, פיזיקה, ואיך בדיוק היקום שלנו פועל.",
+                prepTask: "בחר את כלי התגלית שלך",
                 prepItems: [
-                    { id: 'apple', name: 'A Ripe Apple', icon: '🍎', correct: true },
-                    { id: 'prism', name: 'Glass Prism', icon: '📐', correct: true },
-                    { id: 'calculator', name: 'Pocket Calculator', icon: '🖩', correct: false, msg: "You have to do the math in your head!" },
-                    { id: 'telescope', name: 'Curved Mirrors', icon: '🪞', correct: true }
+                    { id: 'apple', name: 'תפוח עץ בשל', icon: '🍎', correct: true },
+                    { id: 'prism', name: 'מנסרת זכוכית', icon: '📐', correct: true },
+                    { id: 'calculator', name: 'מחשבון כיס', icon: '🖩', correct: false, msg: "אתה ניוטון! אתה צריך לעשות את כל החישובים האלה בראש!" },
+                    { id: 'telescope', name: 'מראות קמורות', icon: '🪞', correct: true }
                 ],
                 journey: [
                     {
-                        fact: "Thump! Something just fell from the tree and hit the ground next to you. It sparks an incredible idea about why things fall down, not up.",
-                        challenge: "What object helped you think about the laws of gravity?",
-                        options: ['A falling orange', 'A falling apple', 'A falling rock'],
-                        answer: 'A falling apple',
-                        successMsg: "The apple led to the Universal Law of Gravitation!"
+                        fact: "בום! משהו הרגע ניתק מהעץ ופגע באדמה ממש לידך. האירוע הפשוט הזה מעורר בך רעיון מדהים לגבי הסיבה שדברים נופלים למטה במקום למעלה.",
+                        challenge: "איזה חפץ טבעי עזר לך לחשוב על חוקי כוח המשיכה?",
+                        options: ['תפוז נופל', 'תפוח נופל', 'אבן כבדה שנופלת'],
+                        answer: 'תפוח נופל',
+                        successMsg: "נכון מאוד. נפילת התפוח הובילה לניסוח חוק המשיכה האוניברסלי!"
                     },
                     {
-                        fact: "Now you are inside, studying a beam of sunlight coming through the window. You want to know what light is made of.",
-                        challenge: "What tool do you use to split the light into a rainbow?",
-                        options: ['A magnifying glass', 'A glass prism', 'A bucket of water'],
-                        answer: 'A glass prism',
-                        successMsg: "You proved that white light contains all the colors of the rainbow!"
+                        fact: "כעת אתה בחדר עבודתך, חוקר קרן שמש החודרת מבעד לחלון הצר. אתה סקרן לדעת ממה באמת עשוי האור.",
+                        challenge: "באיזה כלי אתה משתמש כדי לפצל את קרן האור לקשת בענן?",
+                        options: ['זכוכית מגדלת', 'מנסרת זכוכית', 'דלי מלא במים'],
+                        answer: 'מנסרת זכוכית',
+                        successMsg: "תגלית מדהימה! הוכחת שאור לבן רגיל מכיל בתוכו את כל צבעי הקשת."
                     }
                 ]
             },
             {
                 id: 'marcopolo',
-                name: 'Marco Polo',
+                name: 'מרקו פולו',
                 type: 'explorer',
-                tagline: 'The Great Adventure',
+                tagline: 'ההרפתקה הגדולה מכולן',
                 color: 'bg-orange-500',
                 darkColor: 'bg-orange-700',
                 icon: MapIcon,
-                intro: "You are leaving Venice to travel further East than most Europeans have ever gone. A massive overland journey awaits.",
-                prepTask: "Pack for the overland trek",
+                intro: "אתה עוזב את ביתך בונציה כדי לנסוע מזרחה יותר ממה שרוב האירופאים אי פעם חלמו להגיע אליו. מסע יבשתי אדיר לפניך.",
+                prepTask: "ארוז את הציוד למסע היבשתי",
                 prepItems: [
-                    { id: 'camels', name: 'Pack Camels', icon: '🐫', correct: true },
-                    { id: 'silk', name: 'Trading Goods', icon: '👘', correct: true },
-                    { id: 'car', name: 'An Off-road Jeep', icon: '🚙', correct: false, msg: "Jeeps won't exist for 600 years!" },
-                    { id: 'spices', name: 'Gold for Spices', icon: '💰', correct: true }
+                    { id: 'camels', name: 'שיירת גמלים', icon: '🐫', correct: true },
+                    { id: 'silk', name: 'בגדי משי וסחורות', icon: '👘', correct: true },
+                    { id: 'car', name: "רכב שטח (ג'יפ)", icon: '🚙', correct: false, msg: "ג'יפים לא יהיו קיימים בעולם לעוד 600 שנה!" },
+                    { id: 'spices', name: 'זהב לסחר בתבלינים', icon: '💰', correct: true }
                 ],
                 journey: [
                     {
-                        fact: "The journey is long and dangerous. You are crossing deserts and mountains along a famous trading network to reach the East.",
-                        challenge: "Which famous route are you traveling on?",
-                        options: ['The Gold Trail', 'The Silk Road', 'The Spice Path'],
-                        answer: 'The Silk Road',
-                        successMsg: "The Silk Road connects Europe all the way to China."
+                        fact: "המסע שלנו ארוך ומלא בסכנות. אתה חוצה עכשיו מדבריות צחיחים והרים תלולים לאורך רשת מסחר מפורסמת מאוד בדרך למזרח.",
+                        challenge: "באיזה נתיב מסחר מפורסם אתה נוסע כעת?",
+                        options: ['שביל הזהב', 'דרך המשי', 'נתיב התבלינים'],
+                        answer: 'דרך המשי',
+                        successMsg: "התשובה נכונה. דרך המשי חיברה את יבשת אירופה כל הדרך עד לסין."
                     },
                     {
-                        fact: "You have finally arrived! You meet the great ruler Kublai Khan and will live in his court for many years, writing stories to take back home.",
-                        challenge: "What massive continent have you just explored?",
-                        options: ['Africa', 'Asia', 'South America'],
-                        answer: 'Asia',
-                        successMsg: "Your stories of Asia will amaze Europe and inspire future explorers!"
+                        fact: "סוף סוף הגעת ליעד! אתה פוגש את השליט הגדול קובלאי חאן. אתה עתיד לחיות בחצרו שנים רבות, ולכתוב סיפורים מרתקים שתיקח איתך חזרה הביתה.",
+                        challenge: "איזו יבשת עצומה ורחבה הרגע חקרת?",
+                        options: ['אפריקה', 'אסיה', 'דרום אמריקה'],
+                        answer: 'אסיה',
+                        successMsg: "הסיפורים שתכתוב על יבשת אסיה ידהימו את תושבי אירופה ויתנו השראה לדורות של חוקרים בעתיד!"
                     }
                 ]
             }
@@ -276,16 +279,16 @@
             const [screen, setScreen] = useState('home'); 
             const [activeFigure, setActiveFigure] = useState(null);
             
-            // Prep State
+            // מצב הכנה (Prep State)
             const [inventory, setInventory] = useState([]);
             const [prepError, setPrepError] = useState("");
 
-            // Journey State
+            // מצב מסע (Journey State)
             const [journeyStep, setJourneyStep] = useState(0);
             const [showEvent, setShowEvent] = useState(false);
             const [shake, setShake] = useState(false);
             
-            // Score State
+            // ניקוד (Score State)
             const [mistakes, setMistakes] = useState(0);
             const [completedSims, setCompletedSims] = useState({});
 
@@ -321,14 +324,14 @@
                 const badItem = inventory.find(inv => !inv.correct);
 
                 if (badItem) {
-                    setPrepError(badItem.msg || "You packed something that doesn't belong in this time period!");
+                    setPrepError(badItem.msg || "ארזת משהו שלא שייך לתקופת הזמן הזו!");
                     setShake(true);
                     setTimeout(() => setShake(false), 500);
                     return;
                 }
 
                 if (!hasAllRequired) {
-                    setPrepError("You are missing some crucial supplies! Keep packing.");
+                    setPrepError("חסר לך ציוד חיוני! המשך לארוז לפני שנצא.");
                     setShake(true);
                     setTimeout(() => setShake(false), 500);
                     return;
@@ -364,6 +367,7 @@
                 }
             };
 
+            // --- רינדור המסך הראשי ---
             const renderHome = () => (
                 <div className="max-w-6xl mx-auto p-4 md:p-8 animate-fade-in">
                     <div className="text-center space-y-4 mb-12">
@@ -371,10 +375,10 @@
                             <MapPin className="w-10 h-10 text-blue-600" />
                         </div>
                         <h1 className="text-4xl md:text-6xl font-extrabold text-slate-800 tracking-tight">
-                            History <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Simulator</span>
+                            סימולטור <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">חוקרי היסטוריה</span>
                         </h1>
                         <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto">
-                            Don't just read history—experience it. Pack your gear, overcome historical obstacles, and make discoveries.
+                            אל תקראו רק על היסטוריה—תחוו אותה. ארזו ציוד, התגברו על מכשולים היסטוריים וגלו תגליות.
                         </p>
                     </div>
 
@@ -387,18 +391,18 @@
                                 <button
                                     key={figure.id}
                                     onClick={() => startGame(figure.id)}
-                                    className="group relative bg-white rounded-3xl p-6 shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-left flex flex-col h-full overflow-hidden"
+                                    className="group relative bg-white rounded-3xl p-6 shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-start flex flex-col h-full overflow-hidden"
                                 >
-                                    <div className={`absolute top-0 left-0 w-full h-3 ${figure.color} transition-all group-hover:h-4`} />
+                                    <div className={`absolute top-0 end-0 w-full h-3 ${figure.color} transition-all group-hover:h-4`} />
                                     
                                     <div className="flex justify-between items-start mb-6 pt-2">
                                         <div className={`p-4 rounded-2xl ${figure.color} bg-opacity-10 group-hover:scale-110 transition-transform`}>
                                             <IconCmp className={`w-8 h-8 ${figure.color.replace('bg-', 'text-')}`} />
                                         </div>
                                         {stars && (
-                                            <div className="flex items-center space-x-1 bg-amber-100 text-amber-600 px-3 py-1.5 rounded-full">
+                                            <div className="flex items-center space-x-1 bg-amber-100 text-amber-600 px-3 py-1.5 rounded-full" dir="ltr">
                                                 {[...Array(3)].map((_, i) => (
-                                                    <Star key={i} className={`w-4 h-4 ${i < stars ? 'fill-current' : 'text-amber-200'}`} />
+                                                    <Star key={i} className={`w-4 h-4 ms-1 ${i < stars ? 'fill-current' : 'text-amber-200'}`} />
                                                 ))}
                                             </div>
                                         )}
@@ -407,8 +411,8 @@
                                     <h3 className="text-2xl font-bold text-slate-800 mb-2">{figure.name}</h3>
                                     <p className="text-sm font-medium text-slate-500 mb-6">{figure.tagline}</p>
                                     
-                                    <div className={`mt-auto inline-flex items-center font-bold ${figure.color.replace('bg-', 'text-')} group-hover:translate-x-2 transition-transform`}>
-                                        {stars ? 'Replay Mission' : 'Start Mission'} <Play className="w-4 h-4 ml-2 fill-current" />
+                                    <div className={`mt-auto inline-flex items-center font-bold ${figure.color.replace('bg-', 'text-')} group-hover:-translate-x-2 transition-transform`}>
+                                        <Play className="w-4 h-4 me-2 fill-current rotate-180" /> {stars ? 'שחק שוב במשימה' : 'התחל משימה'} 
                                     </div>
                                 </button>
                             );
@@ -417,12 +421,13 @@
                 </div>
             );
 
+            // --- רינדור מסך ההכנה ---
             const renderPrep = () => {
                 const ActiveIcon = activeFigure.icon;
                 return (
                 <div className="max-w-5xl mx-auto p-4 md:p-8 animate-fade-in">
                     <button onClick={goHome} className="flex items-center text-slate-500 hover:text-slate-800 mb-6 font-medium transition-colors">
-                        <ArrowLeft className="w-5 h-5 mr-2" /> Abort Mission
+                        <ArrowBack className="w-5 h-5 me-2" /> בטל משימה
                     </button>
 
                     <div className="grid md:grid-cols-3 gap-6">
@@ -432,10 +437,10 @@
                             <p className="text-lg opacity-90 mb-6 flex-grow">{activeFigure.intro}</p>
                             
                             <div className="bg-black/20 p-4 rounded-xl backdrop-blur-sm">
-                                <h4 className="font-bold mb-2 flex items-center"><Backpack className="w-5 h-5 mr-2"/> Your Inventory</h4>
+                                <h4 className="font-bold mb-2 flex items-center"><Backpack className="w-5 h-5 me-2"/> התרמיל שלך</h4>
                                 <div className="flex flex-wrap gap-2 min-h-[60px]">
                                     {inventory.length === 0 ? (
-                                        <span className="text-white/60 text-sm italic">Backpack is empty...</span>
+                                        <span className="text-white/60 text-sm italic">התרמיל ריק...</span>
                                     ) : (
                                         inventory.map(item => (
                                             <span key={item.id} className="bg-white text-slate-800 px-3 py-1 rounded-full text-sm font-bold shadow-sm animate-bounce-in">
@@ -449,15 +454,15 @@
 
                         <div className={`md:col-span-2 bg-white rounded-3xl p-6 md:p-8 shadow-lg border-2 ${shake ? 'border-red-400 animate-shake' : 'border-slate-100'}`}>
                             <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-2xl font-bold text-slate-800">Select Supplies</h3>
+                                <h3 className="text-2xl font-bold text-slate-800">בחר ציוד</h3>
                                 <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-sm font-bold">
-                                    Click to pack/unpack
+                                    לחץ לאריזה/פריקה
                                 </span>
                             </div>
 
                             {prepError && (
                                 <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 flex items-start animate-fade-in">
-                                    <AlertCircle className="w-6 h-6 mr-3 flex-shrink-0" />
+                                    <AlertCircle className="w-6 h-6 me-3 flex-shrink-0" />
                                     <p className="font-medium">{prepError}</p>
                                 </div>
                             )}
@@ -475,7 +480,7 @@
                                                     : 'border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-700'
                                             }`}
                                         >
-                                            {isPacked && <CheckCircle2 className="absolute top-3 right-3 w-5 h-5 text-white" />}
+                                            {isPacked && <CheckCircle2 className="absolute top-3 end-3 w-5 h-5 text-white" />}
                                             <div className="text-4xl mb-3">{item.icon}</div>
                                             <div className="font-bold">{item.name}</div>
                                         </button>
@@ -491,7 +496,7 @@
                                         : 'bg-slate-300 cursor-not-allowed'
                                 }`}
                             >
-                                Launch Expedition 🚀
+                                התחל במסע 🚀
                             </button>
                         </div>
                     </div>
@@ -499,6 +504,7 @@
                 );
             };
 
+            // --- רינדור מסך המסע ---
             const renderJourney = () => {
                 const totalSteps = activeFigure.journey.length;
                 const progressPercent = (journeyStep / totalSteps) * 100;
@@ -509,17 +515,19 @@
                     <div className="max-w-5xl mx-auto p-4 md:p-8 animate-fade-in min-h-[80vh] flex flex-col">
                         <div className="flex justify-between items-center mb-8">
                             <h2 className="text-2xl font-bold text-slate-800 flex items-center">
-                                <ActiveIcon className={`w-8 h-8 mr-3 ${activeFigure.color.replace('bg-', 'text-')}`} />
-                                The Journey
+                                <ActiveIcon className={`w-8 h-8 me-3 ${activeFigure.color.replace('bg-', 'text-')}`} />
+                                המסע
                             </h2>
-                            <div className="flex space-x-2">
+                            <div className="flex space-x-2 space-x-reverse">
                                 {[...Array(totalSteps)].map((_, i) => (
                                     <div key={i} className={`w-3 h-3 rounded-full ${i <= journeyStep ? activeFigure.color : 'bg-slate-200'}`} />
                                 ))}
                             </div>
                         </div>
 
-                        <div className="relative bg-slate-100 rounded-3xl p-8 flex-grow flex items-center justify-center overflow-hidden border border-slate-200 shadow-inner min-h-[400px]">
+                        {/* שמנו כאן dir="ltr" כדי לשמור על האנימציה של מסלול ההתקדמות פשוטה וחסינה משגיאות עיצוב */}
+                        <div dir="ltr" className="relative bg-slate-100 rounded-3xl p-8 flex-grow flex items-center justify-center overflow-hidden border border-slate-200 shadow-inner min-h-[400px]">
+                            
                             <div className="absolute inset-0 opacity-10 pointer-events-none flex justify-around items-center">
                                 {activeFigure.type === 'explorer' ? (
                                     <><Wind className="w-32 h-32" /><CloudLightning className="w-24 h-24 mt-32" /><Wind className="w-20 h-20 mb-20" /></>
@@ -528,8 +536,10 @@
                                 )}
                             </div>
 
+                            {/* פס התקדמות אפור */}
                             <div className="absolute md:left-12 md:right-12 md:top-1/2 md:h-2 md:w-auto left-1/2 top-12 bottom-12 w-2 -translate-x-1/2 md:translate-x-0 md:-translate-y-1/2 bg-slate-300 rounded-full"></div>
                             
+                            {/* פס התקדמות צבעוני */}
                             <div 
                                 className={`absolute md:left-12 md:top-1/2 md:h-2 left-1/2 top-12 w-2 md:w-auto -translate-x-1/2 md:translate-x-0 md:-translate-y-1/2 ${activeFigure.color} rounded-full transition-all duration-1000 ease-in-out`}
                                 style={{ 
@@ -539,6 +549,7 @@
                                 }}
                             ></div>
 
+                            {/* האייקון שזז על המסלול */}
                             <div 
                                 className={`absolute flex items-center justify-center w-16 h-16 rounded-full ${activeFigure.darkColor} text-white shadow-xl border-4 border-white z-10 transition-all duration-1000 ease-in-out ${showEvent ? 'animate-pulse' : 'animate-bounce'}`}
                                 style={{
@@ -550,13 +561,14 @@
                                 <ActiveIcon className="w-8 h-8" />
                             </div>
 
+                            {/* מודל האירוע שקופץ */}
                             {showEvent && currentEvent && (
-                                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-20 animate-fade-in">
+                                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-20 animate-fade-in" dir="rtl">
                                     <div className={`bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border-b-8 ${activeFigure.darkColor.replace('bg-', 'border-')} ${shake ? 'animate-shake' : ''}`}>
                                         
-                                        <div className="flex items-center space-x-3 mb-4 text-amber-600 font-bold">
+                                        <div className="flex items-center space-x-3 space-x-reverse mb-4 text-amber-600 font-bold">
                                             <AlertCircle className="w-6 h-6" />
-                                            <span>Encounter!</span>
+                                            <span>אירוע!</span>
                                         </div>
 
                                         <p className="text-xl md:text-2xl text-slate-800 font-bold mb-6 leading-relaxed">
@@ -570,27 +582,27 @@
                                                     <button
                                                         key={idx}
                                                         onClick={() => handleAnswer(opt)}
-                                                        className={`w-full text-left p-4 rounded-xl border-2 font-bold text-slate-700 transition-all group flex justify-between items-center ${
+                                                        className={`w-full text-start p-4 rounded-xl border-2 font-bold text-slate-700 transition-all group flex justify-between items-center ${
                                                             shake ? 'border-slate-200' : 'border-slate-200 hover:border-blue-500 hover:bg-blue-50'
                                                         }`}
                                                     >
                                                         {opt}
-                                                        <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        <ArrowForward className="w-5 h-5 text-slate-400 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                     </button>
                                                 ))}
                                             </div>
                                         </div>
 
                                         {mistakes > 0 && shake && (
-                                            <p className="text-center text-red-500 font-bold animate-pulse">Incorrect! Try another option.</p>
+                                            <p className="text-center text-red-500 font-bold animate-pulse">תשובה שגויה! נסה אפשרות אחרת.</p>
                                         )}
                                     </div>
                                 </div>
                             )}
 
                             {!showEvent && journeyStep < totalSteps && (
-                                <div className="absolute bottom-8 right-8 bg-white/90 backdrop-blur px-6 py-3 rounded-full font-bold text-slate-600 shadow-sm animate-pulse">
-                                    Traveling...
+                                <div className="absolute bottom-8 end-8 bg-white/90 backdrop-blur px-6 py-3 rounded-full font-bold text-slate-600 shadow-sm animate-pulse" dir="rtl">
+                                    נוסעים...
                                 </div>
                             )}
                         </div>
@@ -598,6 +610,7 @@
                 );
             };
 
+            // --- רינדור מסך תוצאה ---
             const renderResult = () => {
                 const stars = Math.max(3 - mistakes, 1);
 
@@ -605,28 +618,28 @@
                     <div className="max-w-2xl mx-auto p-4 md:p-8 animate-fade-in mt-10">
                         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-12 text-center relative overflow-hidden">
                             
-                            <div className={`absolute top-0 left-0 w-full h-4 ${activeFigure.color}`} />
+                            <div className={`absolute top-0 end-0 w-full h-4 ${activeFigure.color}`} />
                             
                             <div className="flex justify-center mb-8">
                                 <div className={`p-8 rounded-full ${stars === 3 ? 'bg-amber-100 text-amber-500' : 'bg-blue-100 text-blue-500'} relative`}>
                                     <Trophy className="w-24 h-24" />
-                                    {stars === 3 && <Sparkles className="absolute -top-2 -right-2 w-10 h-10 text-amber-400 animate-spin-slow" />}
+                                    {stars === 3 && <Sparkles className="absolute -top-2 -end-2 w-10 h-10 text-amber-400 animate-spin-slow" />}
                                 </div>
                             </div>
                             
                             <h2 className="text-4xl md:text-5xl font-extrabold text-slate-800 mb-4">
-                                Mission Accomplished!
+                                המשימה הושלמה בהצלחה!
                             </h2>
                             
                             <p className="text-xl text-slate-600 mb-8">
-                                You successfully guided {activeFigure.name} through history.
+                                הדרכת את {activeFigure.name} בהצלחה דרך ההיסטוריה.
                             </p>
 
-                            <div className="flex justify-center space-x-2 mb-10 bg-slate-50 p-6 rounded-2xl inline-flex mx-auto">
+                            <div className="flex justify-center space-x-2 space-x-reverse mb-10 bg-slate-50 p-6 rounded-2xl inline-flex mx-auto" dir="ltr">
                                 {[...Array(3)].map((_, i) => (
                                     <Star 
                                         key={i} 
-                                        className={`w-12 h-12 transition-all duration-500 delay-${i*100} ${
+                                        className={`w-12 h-12 transition-all ms-2 duration-500 delay-${i*100} ${
                                             i < stars ? 'fill-current text-amber-400 scale-110' : 'text-slate-200'
                                         }`} 
                                     />
@@ -638,13 +651,13 @@
                                     onClick={() => startGame(activeFigure.id)}
                                     className="px-8 py-4 rounded-2xl border-2 border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                                 >
-                                    Play Again
+                                    שחק שוב
                                 </button>
                                 <button
                                     onClick={goHome}
                                     className={`px-8 py-4 rounded-2xl font-extrabold text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all ${activeFigure.darkColor}`}
                                 >
-                                    Return to Headquarters
+                                    חזור למסך הראשי
                                 </button>
                             </div>
                         </div>
@@ -652,22 +665,23 @@
                 );
             };
 
+            // --- מבנה האפליקציה הראשי ---
             return (
                 <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-200 pb-12 overflow-x-hidden">
                     <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
                         <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
                             <button 
-                                className="flex items-center space-x-3 group"
+                                className="flex items-center space-x-3 space-x-reverse group"
                                 onClick={goHome}
                             >
                                 <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-2 rounded-xl group-hover:scale-105 transition-transform shadow-md">
                                     <MapPin className="w-5 h-5" />
                                 </div>
-                                <span className="font-extrabold text-xl tracking-tight text-slate-800">History<span className="text-blue-600">Sim</span></span>
+                                <span className="font-extrabold text-xl tracking-tight text-slate-800">סימולטור <span className="text-blue-600">היסטוריה</span></span>
                             </button>
                             
                             {activeFigure && screen !== 'home' && (
-                                <div className="hidden sm:flex items-center space-x-2 text-sm font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200">
+                                <div className="hidden sm:flex items-center space-x-2 space-x-reverse text-sm font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200">
                                     {React.createElement(activeFigure.icon, { className: `w-4 h-4 ${activeFigure.color.replace('bg-', 'text-')}` })}
                                     <span>{activeFigure.name}</span>
                                 </div>
@@ -685,7 +699,7 @@
             );
         }
 
-        // Mount the application
+        // טעינת האפליקציה
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<HistorySimulator />);
     </script>
