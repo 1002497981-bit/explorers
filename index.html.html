@@ -3,705 +3,784 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>סימולטור חוקרי היסטוריה</title>
-
-    <!-- טעינת React ו-ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <title>משחק טריוויה - קלפי היסטוריה</title>
     
-    <!-- טעינת Babel לקימפול הקוד בדפדפן -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- טעינת Tailwind CSS לעיצוב -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- אנימציות CSS מותאמות אישית -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
     <style>
-        body { margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        
-        @keyframes bounceIn { 
-          0% { transform: scale(0.8); opacity: 0; } 
-          50% { transform: scale(1.1); } 
-          100% { transform: scale(1); opacity: 1; } 
+        :root {
+            --gold: #C9A84C;
+            --gold-light: #E8C96A;
+            --navy: #0D1B2A;
+            --navy-mid: #1B2D42;
+            --cream: #F5EDD6;
+            --cream-dark: #E8D9B8;
+            --red-accent: #8B1A1A;
         }
-        .animate-bounce-in { animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-8px); }
-          50% { transform: translateX(8px); }
-          75% { transform: translateX(-8px); }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--navy);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
         }
-        .animate-shake { animation: shake 0.4s ease-in-out; }
-        
-        @keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .animate-spin-slow { animation: spinSlow 4s linear infinite; }
+
+        /* Felt table texture */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.012) 2px, rgba(255,255,255,0.012) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.012) 2px, rgba(255,255,255,0.012) 4px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Vignette */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .font-display { font-family: 'Playfair Display', serif; }
+
+        /* Card 3D */
+        .card-scene { perspective: 1200px; }
+        .card-inner {
+            transition: transform 0.75s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transform-style: preserve-3d;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        .card-inner.flipped { transform: rotateY(180deg); }
+        .card-face {
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 16px;
+        }
+        .card-back { transform: rotateY(0deg); }
+        .card-front { transform: rotateY(180deg); }
+
+        /* Gold border ornament */
+        .gold-border {
+            border: 3px solid var(--gold);
+            box-shadow: 0 0 0 1px rgba(201,168,76,0.3), inset 0 0 0 1px rgba(201,168,76,0.15);
+        }
+
+        /* Ornamental corners */
+        .corner-ornament {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border-color: var(--gold);
+            opacity: 0.7;
+        }
+        .corner-tl { top: 12px; right: 12px; border-top: 2px solid; border-right: 2px solid; }
+        .corner-tr { top: 12px; left: 12px; border-top: 2px solid; border-left: 2px solid; }
+        .corner-bl { bottom: 12px; right: 12px; border-bottom: 2px solid; border-right: 2px solid; }
+        .corner-br { bottom: 12px; left: 12px; border-bottom: 2px solid; border-left: 2px solid; }
+
+        /* Answer buttons */
+        .answer-btn {
+            background: var(--cream);
+            border: 2px solid var(--cream-dark);
+            color: var(--navy);
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            padding: 16px 20px;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+        }
+        .answer-btn:hover:not(:disabled) {
+            background: var(--gold-light);
+            border-color: var(--gold);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 rgba(0,0,0,0.3);
+        }
+        .answer-btn:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+        }
+        .answer-btn.correct {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+            transform: scale(1.03);
+            box-shadow: 0 0 20px rgba(40,167,69,0.4), 0 4px 0 rgba(0,0,0,0.3);
+        }
+        .answer-btn.wrong {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+            transform: scale(0.97);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+        }
+        .answer-btn.dimmed {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        /* Feedback overlay */
+        .feedback-overlay {
+            animation: fadeInScale 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.85); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Score badge pulse */
+        @keyframes scorePulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .score-pulse { animation: scorePulse 0.4s ease; }
+
+        /* Card hover */
+        .card-hover:hover { transform: translateY(-6px) rotate(-1deg); }
+        .card-hover { transition: transform 0.3s ease; }
+
+        /* Stars animation */
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* Progress bar */
+        .progress-bar {
+            height: 6px;
+            background: rgba(201,168,76,0.15);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gold), var(--gold-light));
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        /* Deck stack effect */
+        .deck-stack::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: #1a2a3a;
+            border-radius: 16px;
+            transform: translate(8px, 8px);
+            z-index: -1;
+            border: 2px solid rgba(201,168,76,0.2);
+        }
+        .deck-stack::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: #152030;
+            border-radius: 16px;
+            transform: translate(16px, 16px);
+            z-index: -2;
+            border: 2px solid rgba(201,168,76,0.1);
+        }
+
+        /* Trophy bounce */
+        @keyframes trophyBounce {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-12px) rotate(-5deg); }
+            75% { transform: translateY(-6px) rotate(5deg); }
+        }
+        .trophy-anim { animation: trophyBounce 2s ease-in-out infinite; }
+
+        /* Shine effect on card back */
+        @keyframes cardShine {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        .card-shine {
+            background: linear-gradient(105deg, transparent 40%, rgba(201,168,76,0.15) 50%, transparent 60%);
+            background-size: 200% 100%;
+            animation: cardShine 3s ease infinite;
+        }
+
+        /* RTL helpers */
+        .mr-auto-rtl { margin-left: auto; }
     </style>
 </head>
-<body class="bg-slate-50">
-    <div id="root"></div>
+<body>
+
+    <div id="root" class="relative z-10 w-full min-h-screen flex justify-center items-start py-6 px-4"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // --- רכיבי אייקונים ---
-        const Icon = ({ path, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{ __html: path }} />
+        /* ── SVG Icons ── */
+        const IconLayers = ({size=24, ...p}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 12 12 17 22 12"/><polyline points="2 17 12 22 22 17"/></svg>;
+        const IconStar = ({size=24, filled=false, ...p}) => <svg width={size} height={size} viewBox="0 0 24 24" fill={filled?"currentColor":"none"} stroke="currentColor" strokeWidth="2" {...p}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+        const IconCheck = ({size=24,...p}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
+        const IconX = ({size=24,...p}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>;
+        const IconRefresh = ({size=24,...p}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+        const IconTrophy = ({size=24,...p}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>;
+        const IconChevron = ({size=24,...p}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m15 18-6-6 6-6"/></svg>;
+
+        /* ── Decorative diamond divider ── */
+        const Divider = () => (
+            <div style={{display:'flex',alignItems:'center',gap:8,width:'100%',margin:'8px 0'}}>
+                <div style={{flex:1,height:1,background:'linear-gradient(to left, var(--gold), transparent)',opacity:0.4}}/>
+                <svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,0 12,6 6,12 0,6" fill="var(--gold)" opacity="0.7"/></svg>
+                <div style={{flex:1,height:1,background:'linear-gradient(to right, var(--gold), transparent)',opacity:0.4}}/>
+            </div>
         );
 
-        const Ship = (p) => <Icon {...p} path='<path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 3.2-1.5 5.5-1.5s3 1.5 5.5 1.5c1.3 0 1.9-.5 2.5-1M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/><path d="M12 10v4"/><path d="M12 2v3"/>'/>;
-        const Compass = (p) => <Icon {...p} path='<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>'/>;
-        const Anchor = (p) => <Icon {...p} path='<circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/>'/>;
-        const PenTool = (p) => <Icon {...p} path='<path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.586 7.586"/><circle cx="11" cy="11" r="2"/>'/>;
-        const Apple = (p) => <Icon {...p} path='<path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/>'/>;
-        const MapIcon = (p) => <Icon {...p} path='<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>'/>;
-        
-        // חיצים מותאמים לכיוון ימין-שמאל
-        const ArrowBack = (p) => <Icon {...p} path='<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>'/>;
-        const ArrowForward = (p) => <Icon {...p} path='<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>'/>;
-        
-        const CheckCircle2 = (p) => <Icon {...p} path='<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'/>;
-        const Play = (p) => <Icon {...p} path='<polygon points="5 3 19 12 5 21 5 3"/>'/>;
-        const AlertCircle = (p) => <Icon {...p} path='<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'/>;
-        const Trophy = (p) => <Icon {...p} path='<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>'/>;
-        const Star = (p) => <Icon {...p} path='<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'/>;
-        const Backpack = (p) => <Icon {...p} path='<path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10Z"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5"/><path d="M8 10h8"/><path d="M8 14h8"/>'/>;
-        const CloudLightning = (p) => <Icon {...p} path='<path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973"/><path d="m13 11-4 6h6l-4 6"/>'/>;
-        const Wind = (p) => <Icon {...p} path='<path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>'/>;
-        const MapPin = (p) => <Icon {...p} path='<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>'/>;
-        const Sparkles = (p) => <Icon {...p} path='<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>'/>;
-
-        // --- נתוני הסימולטור ---
-        const FIGURES = [
-            {
-                id: 'magellan',
-                name: 'פרדיננד מגלן',
-                type: 'explorer',
-                tagline: 'המסע העולמי הראשון',
-                color: 'bg-blue-500',
-                darkColor: 'bg-blue-700',
-                icon: Ship,
-                intro: "קפטן! אנו מנסים את הבלתי אפשרי: מסע מסוכן להקיף את העולם. ארוז את הצי בחכמה לדרך ארוכה במיוחד.",
-                prepTask: "ארוז את הצי למסע העולמי",
-                prepItems: [
-                    { id: 'ships', name: '5 ספינות', icon: '⛵', correct: true },
-                    { id: 'lemons', name: 'ארגזי לימונים', icon: '🍋', correct: true },
-                    { id: 'tv', name: 'טלוויזיה', icon: '📺', correct: false, msg: "אין חשמל בשנת 1519! אין מה לעשות עם זה." },
-                    { id: 'maps', name: 'מפות כוכבים', icon: '✨', correct: true }
-                ],
-                journey: [
-                    {
-                        fact: "הפלגנו הרחק מספרד. הצוות נחלש, השיניים כואבות, והם חולים מאוד במחלת הצפדינה!",
-                        challenge: "מהר! מה מהציוד שלנו עלינו לתת לצוות כדי לרפא אותם?",
-                        options: ['ממתקים מתוקים', 'הלימונים שלנו', 'לחם יבש'],
-                        answer: 'הלימונים שלנו',
-                        successMsg: "ויטמין ה-C שבלימונים הציל את חיי הצוות!"
-                    },
-                    {
-                        fact: "אנו נכנסים לאוקיינוס שקט וענק. אנו האירופאים הראשונים שחוצים אותו במסע סביב העולם.",
-                        challenge: "חזור במחשבותיך אחורה לרגע שעזבנו את הנמל. עם כמה ספינות התחלנו את המסע המטורף הזה?",
-                        options: ['רק 2 ספינות', 'בדיוק 5 ספינות', 'צי של 10 ספינות'],
-                        answer: 'בדיוק 5 ספינות',
-                        successMsg: "נכון! למרבה הצער, לא כל ה-5 יחזרו, אך ההיסטוריה תזכור אותנו לתמיד."
-                    }
-                ]
-            },
-            {
-                id: 'columbus',
-                name: 'כריסטופר קולומבוס',
-                type: 'explorer',
-                tagline: 'המסע הגדול של 1492',
-                color: 'bg-indigo-500',
-                darkColor: 'bg-indigo-700',
-                icon: Compass,
-                intro: "קיבלת מימון ממלכת ספרד. הרעיון המטורף שלך: להפליג מערבה אל הלא-נודע כדי להגיע לאסיה!",
-                prepTask: "בחר ספינות וציוד לשנת 1492",
-                prepItems: [
-                    { id: 'pinta', name: 'הפינטה', icon: '⛵', correct: true },
-                    { id: 'santamaria', name: 'סנטה מריה', icon: '🚢', correct: true },
-                    { id: 'submarine', name: 'צוללת', icon: '🤿', correct: false, msg: "צוללות טרם הומצאו! נצטרך להישאר מעל פני המים." },
-                    { id: 'compass', name: 'מצפן מגנטי', icon: '🧭', correct: true }
-                ],
-                journey: [
-                    {
-                        fact: "הצוות מבועת לחלוטין. אנחנו מפליגים כבר שבועות ולא רואים יבשה באופק. הם חושבים שאנחנו אבודים.",
-                        challenge: "איזה אוקיינוס עצום אנו חוצים כעת?",
-                        options: ['האוקיינוס השקט', 'האוקיינוס האטלנטי', 'האוקיינוס ההודי'],
-                        answer: 'האוקיינוס האטלנטי',
-                        successMsg: "נכון! עלינו להמשיך להפליג מערבה דרך האוקיינוס האטלנטי."
-                    },
-                    {
-                        fact: "יבשה באופק! סוף סוף מצאנו אדמה. אני מאמין שזו אסיה, למרות שההיסטוריה תקרא לה לבסוף אמריקה.",
-                        challenge: "באיזו שנה התחלנו את המסע ההיסטורי הזה?",
-                        options: ['1492', '1500', '1992'],
-                        answer: '1492',
-                        successMsg: "בשנת 1492 קולומבוס חצה את האוקיינוס הכחול!"
-                    }
-                ]
-            },
-            {
-                id: 'cook',
-                name: "קפטן ג'יימס קוק",
-                type: 'explorer',
-                tagline: 'חוקר האיים המפורסם',
-                color: 'bg-teal-500',
-                darkColor: 'bg-teal-700',
-                icon: Anchor,
-                intro: "צא לחקור איים לא מוכרים ולתעד תגליות. מעל הכל, שמירה על בריאות הצוות היא בעדיפות עליונה.",
-                prepTask: "אסוף ציוד למסע בריא",
-                prepItems: [
-                    { id: 'onions', name: 'שקי בצלים', icon: '🧅', correct: true },
-                    { id: 'fruit', name: 'ירקות ופירות', icon: '🥬', correct: true },
-                    { id: 'soda', name: 'משקאות מוגזים', icon: '🥤', correct: false, msg: "המשקה המוגז רק יהרוס להם את השיניים ולא יתרום לבריאות!" },
-                    { id: 'telescope', name: 'טלסקופ חלל', icon: '🔭', correct: true }
-                ],
-                journey: [
-                    {
-                        fact: "זהו מסע ארוך לעבר הוואי ואנטארקטיקה. ספינות אחרות מאבדות מלחים בגלל מחלות, אבל לך יש תוכנית תזונה מוקפדת.",
-                        challenge: "מה אתה מכריח את הצוות לאכול כדי שיישארו בריאים?",
-                        options: ['בצלים ופירות טריים', 'רק מי ים תפלים', 'רק בשר מומלח'],
-                        answer: 'בצלים ופירות טריים',
-                        successMsg: "הצוות אולי מתלונן על הטעם, אבל אף אחד לא חולה!"
-                    },
-                    {
-                        fact: "נחתנו בטהיטי! האסטרונומים שהבאת איתך פורקים ומקימים את הציוד שלהם כדי להסתכל אל השמיים.",
-                        challenge: "באיזה כוכב לכת האסטרונומים שלך באו לצפות מכל כך רחוק?",
-                        options: ['מאדים', 'נוגה (ונוס)', 'צדק'],
-                        answer: 'נוגה (ונוס)',
-                        successMsg: "תצפית מעולה! הם צפו בהצלחה במעבר של כוכב הלכת נוגה."
-                    }
-                ]
-            },
-            {
-                id: 'leonardo',
-                name: "לאונרדו דה וינצ'י",
-                type: 'inventor',
-                tagline: 'מחברת הקסם',
-                color: 'bg-amber-500',
-                darkColor: 'bg-amber-700',
-                icon: PenTool,
-                intro: "ברוכים הבאים לתקופת הרנסאנס, מאסטרו! אתה מוכן לצייר יצירות מופת ולשרטט המצאות שיקדימו את זמנן במאות שנים.",
-                prepTask: "אסוף כלים עבור סדנת הסתרים שלך",
-                prepItems: [
-                    { id: 'mirror', name: 'מראת יד קטנה', icon: '🪞', correct: true },
-                    { id: 'notebook', name: 'מחברת עור עבה', icon: '📓', correct: true },
-                    { id: 'laptop', name: 'מחשב נייד', icon: '💻', correct: false, msg: "חשמל? אינטרנט? איזה סוג של קסם זה? זה עדיין לא קיים." },
-                    { id: 'paint', name: 'צבעי שמן', icon: '🎨', correct: true }
-                ],
-                journey: [
-                    {
-                        fact: "אתה צופה בציפורים עפות בשמיים כבר שעות. הרעיון מבזיק, ואתה ממהר לסדנה לשרטט מכונה שתוכל להרים אדם לאוויר.",
-                        challenge: "איזו מכונה מעופפת (שקיימת היום) אתה מנסה להמציא ברשימות שלך?",
-                        options: ['מטוס סילון', 'מסוק (הליקופטר)', 'טיל לחלל'],
-                        answer: 'מסוק (הליקופטר)',
-                        successMsg: "עיצוב 'הבורג האווירי' שלך הוא פשוט גאוני ומקדים את זמנו במאות שנים!"
-                    },
-                    {
-                        fact: "אנשים מרחרחים ומציצים לתוך הסדנה שלך! אתה חייב לוודא שאף אחד לא יוכל לקרוא ולגנוב את הרעיונות מתוך המחברת שלך.",
-                        challenge: "כיצד אתה מסתיר את הכתבים הסודיים שלך?",
-                        options: ['משתמש בדיו סמוי', 'כותב בכתב ראי', 'קובר את הספר בחצר'],
-                        answer: 'כותב בכתב ראי',
-                        successMsg: "חכם מאוד! אתה כותב הפוך כך שניתן לקרוא את הטקסט רק אם מציבים אותו מול המראה שלך."
-                    }
-                ]
-            },
-            {
-                id: 'newton',
-                name: 'אייזק ניוטון',
-                type: 'inventor',
-                tagline: 'סיפורו של כוח המשיכה',
-                color: 'bg-red-500',
-                darkColor: 'bg-red-700',
-                icon: Apple,
-                intro: "אתה יושב במטע באנגליה, שקוע במחשבות עמוקות על מתמטיקה, פיזיקה, ואיך בדיוק היקום שלנו פועל.",
-                prepTask: "בחר את כלי התגלית שלך",
-                prepItems: [
-                    { id: 'apple', name: 'תפוח עץ בשל', icon: '🍎', correct: true },
-                    { id: 'prism', name: 'מנסרת זכוכית', icon: '📐', correct: true },
-                    { id: 'calculator', name: 'מחשבון כיס', icon: '🖩', correct: false, msg: "אתה ניוטון! אתה צריך לעשות את כל החישובים האלה בראש!" },
-                    { id: 'telescope', name: 'מראות קמורות', icon: '🪞', correct: true }
-                ],
-                journey: [
-                    {
-                        fact: "בום! משהו הרגע ניתק מהעץ ופגע באדמה ממש לידך. האירוע הפשוט הזה מעורר בך רעיון מדהים לגבי הסיבה שדברים נופלים למטה במקום למעלה.",
-                        challenge: "איזה חפץ טבעי עזר לך לחשוב על חוקי כוח המשיכה?",
-                        options: ['תפוז נופל', 'תפוח נופל', 'אבן כבדה שנופלת'],
-                        answer: 'תפוח נופל',
-                        successMsg: "נכון מאוד. נפילת התפוח הובילה לניסוח חוק המשיכה האוניברסלי!"
-                    },
-                    {
-                        fact: "כעת אתה בחדר עבודתך, חוקר קרן שמש החודרת מבעד לחלון הצר. אתה סקרן לדעת ממה באמת עשוי האור.",
-                        challenge: "באיזה כלי אתה משתמש כדי לפצל את קרן האור לקשת בענן?",
-                        options: ['זכוכית מגדלת', 'מנסרת זכוכית', 'דלי מלא במים'],
-                        answer: 'מנסרת זכוכית',
-                        successMsg: "תגלית מדהימה! הוכחת שאור לבן רגיל מכיל בתוכו את כל צבעי הקשת."
-                    }
-                ]
-            },
-            {
-                id: 'marcopolo',
-                name: 'מרקו פולו',
-                type: 'explorer',
-                tagline: 'ההרפתקה הגדולה מכולן',
-                color: 'bg-orange-500',
-                darkColor: 'bg-orange-700',
-                icon: MapIcon,
-                intro: "אתה עוזב את ביתך בונציה כדי לנסוע מזרחה יותר ממה שרוב האירופאים אי פעם חלמו להגיע אליו. מסע יבשתי אדיר לפניך.",
-                prepTask: "ארוז את הציוד למסע היבשתי",
-                prepItems: [
-                    { id: 'camels', name: 'שיירת גמלים', icon: '🐫', correct: true },
-                    { id: 'silk', name: 'בגדי משי וסחורות', icon: '👘', correct: true },
-                    { id: 'car', name: "רכב שטח (ג'יפ)", icon: '🚙', correct: false, msg: "ג'יפים לא יהיו קיימים בעולם לעוד 600 שנה!" },
-                    { id: 'spices', name: 'זהב לסחר בתבלינים', icon: '💰', correct: true }
-                ],
-                journey: [
-                    {
-                        fact: "המסע שלנו ארוך ומלא בסכנות. אתה חוצה עכשיו מדבריות צחיחים והרים תלולים לאורך רשת מסחר מפורסמת מאוד בדרך למזרח.",
-                        challenge: "באיזה נתיב מסחר מפורסם אתה נוסע כעת?",
-                        options: ['שביל הזהב', 'דרך המשי', 'נתיב התבלינים'],
-                        answer: 'דרך המשי',
-                        successMsg: "התשובה נכונה. דרך המשי חיברה את יבשת אירופה כל הדרך עד לסין."
-                    },
-                    {
-                        fact: "סוף סוף הגעת ליעד! אתה פוגש את השליט הגדול קובלאי חאן. אתה עתיד לחיות בחצרו שנים רבות, ולכתוב סיפורים מרתקים שתיקח איתך חזרה הביתה.",
-                        challenge: "איזו יבשת עצומה ורחבה הרגע חקרת?",
-                        options: ['אפריקה', 'אסיה', 'דרום אמריקה'],
-                        answer: 'אסיה',
-                        successMsg: "הסיפורים שתכתוב על יבשת אסיה ידהימו את תושבי אירופה ויתנו השראה לדורות של חוקרים בעתיד!"
-                    }
-                ]
-            }
+        /* ── Game Data ── */
+        const gameData = [
+          { name: "Alexander Graham Bell", clue: "I invented the very first telephone in 1876." },
+          { name: "Martin Cooper", clue: "I invented the first mobile cell phone in 1973. It was huge and heavy!" },
+          { name: "Isaac Newton", clue: "My story is famous for a falling apple and discovering gravity." },
+          { name: "Leonardo da Vinci", clue: "I kept a 'magic notebook', painted famous smiles, and even drew a helicopter." },
+          { name: "The Wright brothers", clue: "We used our knowledge of bicycles to build the first airplane with wings and an engine." },
+          { name: "Christopher Columbus", clue: "My story is about a famous historic voyage sailing across the ocean." },
+          { name: "Captain Cook", clue: "I kept a famous logbook of my amazing adventures exploring the seas." },
+          { name: "Amelia Earhart", clue: "I am a famous female pilot mentioned in the lesson about early airplanes." },
+          { name: "Motorola DynaTAC", clue: "Invented in 1973, I was the first mobile cell phone and weighed 1.1 kilograms." },
+          { name: "IBM Simon", clue: "Invented in 1994, I was the first 'smartphone' with a touch screen and software apps." },
+          { name: "Telegraph", clue: "Before the telephone was invented, people used me and letters to communicate." },
+          { name: "Charles Lindbergh", clue: "I am a famous pilot mentioned in the lesson about the first airplanes, along with Amelia Earhart." },
+          { name: "Blanche Scott", clue: "I am a famous female pilot mentioned in the story of the first airplane." },
+          { name: "Bicycle", clue: "The Wright brothers used their knowledge of making me to build the first airplane." },
+          { name: "Propellers", clue: "The first airplane built by the Wright brothers had wings, an engine, and these spinning parts." },
+          { name: "Renaissance", clue: "I am a period of 'rebirth' of ancient ideas when people made scientific discoveries and great art." },
+          { name: "Mirror", clue: "Leonardo da Vinci wrote his notebook backwards, so you would need me to read it!" },
+          { name: "Helicopter", clue: "I am a flying machine that Leonardo da Vinci drew in his magic notebook long before I was invented." },
+          { name: "Mona Lisa", clue: "I am the painting with the famous 'smile' created by the great painter Leonardo da Vinci." },
+          { name: "Gravity", clue: "I am the invisible force that pulls things down, famously discovered by Isaac Newton." },
+          { name: "An Apple", clue: "I am the fruit that famously fell from a tree in the story of Isaac Newton." },
+          { name: "The Ocean", clue: "Christopher Columbus went on a historic voyage sailing across me." },
+          { name: "A Logbook", clue: "Captain Cook kept his amazing adventures exploring the seas written inside me." },
+          { name: "1876", clue: "I am the year that Alexander Graham Bell invented the very first telephone." },
+          { name: "1.1 kilograms", clue: "I am the heavy weight of the first mobile cell phone invented by Martin Cooper." },
+          { name: "35 minutes", clue: "I am how long the battery worked on the very first mobile cell phone." },
+          { name: "Touch screen", clue: "The IBM Simon was the first smartphone to have software apps and this special type of screen." },
+          { name: "Wires", clue: "The first telephones had these long metal strings to carry electricity, but modern mobile phones do not!" }
         ];
 
-        function HistorySimulator() {
-            const [screen, setScreen] = useState('home'); 
-            const [activeFigure, setActiveFigure] = useState(null);
-            
-            // מצב הכנה (Prep State)
-            const [inventory, setInventory] = useState([]);
-            const [prepError, setPrepError] = useState("");
+        const allNames = [...new Set(gameData.map(d => d.name))];
 
-            // מצב מסע (Journey State)
-            const [journeyStep, setJourneyStep] = useState(0);
-            const [showEvent, setShowEvent] = useState(false);
-            const [shake, setShake] = useState(false);
-            
-            // ניקוד (Score State)
-            const [mistakes, setMistakes] = useState(0);
-            const [completedSims, setCompletedSims] = useState({});
+        function generateOptions(correctName) {
+            const others = allNames.filter(n => n !== correctName).sort(() => 0.5 - Math.random()).slice(0, 2);
+            return [correctName, ...others].sort(() => 0.5 - Math.random());
+        }
 
-            const startGame = (figureId) => {
-                const figure = FIGURES.find(f => f.id === figureId);
-                setActiveFigure(figure);
-                setInventory([]);
-                setPrepError("");
-                setJourneyStep(0);
-                setMistakes(0);
-                setShowEvent(false);
-                setScreen('prep');
-            };
-
-            const goHome = () => {
-                setScreen('home');
-                setActiveFigure(null);
-            };
-
-            const toggleInventoryItem = (item) => {
-                setPrepError("");
-                if (inventory.find(i => i.id === item.id)) {
-                    setInventory(inventory.filter(i => i.id !== item.id));
-                } else {
-                    setInventory([...inventory, item]);
-                }
-            };
-
-            const launchJourney = () => {
-                const requiredItems = activeFigure.prepItems.filter(i => i.correct);
-                const hasAllRequired = requiredItems.every(req => inventory.some(inv => inv.id === req.id));
-                
-                const badItem = inventory.find(inv => !inv.correct);
-
-                if (badItem) {
-                    setPrepError(badItem.msg || "ארזת משהו שלא שייך לתקופת הזמן הזו!");
-                    setShake(true);
-                    setTimeout(() => setShake(false), 500);
-                    return;
-                }
-
-                if (!hasAllRequired) {
-                    setPrepError("חסר לך ציוד חיוני! המשך לארוז לפני שנצא.");
-                    setShake(true);
-                    setTimeout(() => setShake(false), 500);
-                    return;
-                }
-
-                setScreen('journey');
-                setTimeout(() => {
-                    setShowEvent(true);
-                }, 1500);
-            };
-
-            const handleAnswer = (answer) => {
-                const currentEvent = activeFigure.journey[journeyStep];
-                
-                if (answer === currentEvent.answer) {
-                    setShowEvent(false);
-                    if (journeyStep < activeFigure.journey.length - 1) {
-                        setTimeout(() => {
-                            setJourneyStep(prev => prev + 1);
-                            setTimeout(() => setShowEvent(true), 1500);
-                        }, 500);
-                    } else {
-                        setTimeout(() => {
-                            const finalScore = Math.max(3 - mistakes, 1);
-                            setCompletedSims({...completedSims, [activeFigure.id]: finalScore});
-                            setScreen('result');
-                        }, 1000);
-                    }
-                } else {
-                    setMistakes(prev => prev + 1);
-                    setShake(true);
-                    setTimeout(() => setShake(false), 500);
-                }
-            };
-
-            // --- רינדור המסך הראשי ---
-            const renderHome = () => (
-                <div className="max-w-6xl mx-auto p-4 md:p-8 animate-fade-in">
-                    <div className="text-center space-y-4 mb-12">
-                        <div className="inline-flex items-center justify-center p-4 bg-blue-100 rounded-full mb-4">
-                            <MapPin className="w-10 h-10 text-blue-600" />
-                        </div>
-                        <h1 className="text-4xl md:text-6xl font-extrabold text-slate-800 tracking-tight">
-                            סימולטור <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">חוקרי היסטוריה</span>
-                        </h1>
-                        <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto">
-                            אל תקראו רק על היסטוריה—תחוו אותה. ארזו ציוד, התגברו על מכשולים היסטוריים וגלו תגליות.
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {FIGURES.map((figure) => {
-                            const IconCmp = figure.icon;
-                            const stars = completedSims[figure.id];
-                            
-                            return (
-                                <button
-                                    key={figure.id}
-                                    onClick={() => startGame(figure.id)}
-                                    className="group relative bg-white rounded-3xl p-6 shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-start flex flex-col h-full overflow-hidden"
-                                >
-                                    <div className={`absolute top-0 end-0 w-full h-3 ${figure.color} transition-all group-hover:h-4`} />
-                                    
-                                    <div className="flex justify-between items-start mb-6 pt-2">
-                                        <div className={`p-4 rounded-2xl ${figure.color} bg-opacity-10 group-hover:scale-110 transition-transform`}>
-                                            <IconCmp className={`w-8 h-8 ${figure.color.replace('bg-', 'text-')}`} />
-                                        </div>
-                                        {stars && (
-                                            <div className="flex items-center space-x-1 bg-amber-100 text-amber-600 px-3 py-1.5 rounded-full" dir="ltr">
-                                                {[...Array(3)].map((_, i) => (
-                                                    <Star key={i} className={`w-4 h-4 ms-1 ${i < stars ? 'fill-current' : 'text-amber-200'}`} />
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    <h3 className="text-2xl font-bold text-slate-800 mb-2">{figure.name}</h3>
-                                    <p className="text-sm font-medium text-slate-500 mb-6">{figure.tagline}</p>
-                                    
-                                    <div className={`mt-auto inline-flex items-center font-bold ${figure.color.replace('bg-', 'text-')} group-hover:-translate-x-2 transition-transform`}>
-                                        <Play className="w-4 h-4 me-2 fill-current rotate-180" /> {stars ? 'שחק שוב במשימה' : 'התחל משימה'} 
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-
-            // --- רינדור מסך ההכנה ---
-            const renderPrep = () => {
-                const ActiveIcon = activeFigure.icon;
-                return (
-                <div className="max-w-5xl mx-auto p-4 md:p-8 animate-fade-in">
-                    <button onClick={goHome} className="flex items-center text-slate-500 hover:text-slate-800 mb-6 font-medium transition-colors">
-                        <ArrowBack className="w-5 h-5 me-2" /> בטל משימה
-                    </button>
-
-                    <div className="grid md:grid-cols-3 gap-6">
-                        <div className={`md:col-span-1 rounded-3xl p-6 text-white ${activeFigure.color} shadow-lg flex flex-col`}>
-                            <ActiveIcon className="w-12 h-12 mb-4 opacity-80" />
-                            <h2 className="text-3xl font-extrabold mb-2">{activeFigure.name}</h2>
-                            <p className="text-lg opacity-90 mb-6 flex-grow">{activeFigure.intro}</p>
-                            
-                            <div className="bg-black/20 p-4 rounded-xl backdrop-blur-sm">
-                                <h4 className="font-bold mb-2 flex items-center"><Backpack className="w-5 h-5 me-2"/> התרמיל שלך</h4>
-                                <div className="flex flex-wrap gap-2 min-h-[60px]">
-                                    {inventory.length === 0 ? (
-                                        <span className="text-white/60 text-sm italic">התרמיל ריק...</span>
-                                    ) : (
-                                        inventory.map(item => (
-                                            <span key={item.id} className="bg-white text-slate-800 px-3 py-1 rounded-full text-sm font-bold shadow-sm animate-bounce-in">
-                                                {item.icon} {item.name}
-                                            </span>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className={`md:col-span-2 bg-white rounded-3xl p-6 md:p-8 shadow-lg border-2 ${shake ? 'border-red-400 animate-shake' : 'border-slate-100'}`}>
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-2xl font-bold text-slate-800">בחר ציוד</h3>
-                                <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-sm font-bold">
-                                    לחץ לאריזה/פריקה
-                                </span>
-                            </div>
-
-                            {prepError && (
-                                <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 flex items-start animate-fade-in">
-                                    <AlertCircle className="w-6 h-6 me-3 flex-shrink-0" />
-                                    <p className="font-medium">{prepError}</p>
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-2 gap-4 mb-8">
-                                {activeFigure.prepItems.map((item) => {
-                                    const isPacked = inventory.some(i => i.id === item.id);
-                                    return (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => toggleInventoryItem(item)}
-                                            className={`relative p-4 md:p-6 rounded-2xl border-2 text-center transition-all duration-200 transform hover:-translate-y-1 ${
-                                                isPacked 
-                                                    ? `${activeFigure.color} border-transparent text-white shadow-md` 
-                                                    : 'border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-700'
-                                            }`}
-                                        >
-                                            {isPacked && <CheckCircle2 className="absolute top-3 end-3 w-5 h-5 text-white" />}
-                                            <div className="text-4xl mb-3">{item.icon}</div>
-                                            <div className="font-bold">{item.name}</div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            <button
-                                onClick={launchJourney}
-                                className={`w-full py-5 rounded-2xl font-extrabold text-xl text-white shadow-lg transition-all ${
-                                    inventory.length > 0 
-                                        ? `${activeFigure.darkColor} hover:opacity-90 hover:scale-[1.02]` 
-                                        : 'bg-slate-300 cursor-not-allowed'
-                                }`}
-                            >
-                                התחל במסע 🚀
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                );
-            };
-
-            // --- רינדור מסך המסע ---
-            const renderJourney = () => {
-                const totalSteps = activeFigure.journey.length;
-                const progressPercent = (journeyStep / totalSteps) * 100;
-                const currentEvent = activeFigure.journey[journeyStep];
-                const ActiveIcon = activeFigure.icon;
-
-                return (
-                    <div className="max-w-5xl mx-auto p-4 md:p-8 animate-fade-in min-h-[80vh] flex flex-col">
-                        <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-2xl font-bold text-slate-800 flex items-center">
-                                <ActiveIcon className={`w-8 h-8 me-3 ${activeFigure.color.replace('bg-', 'text-')}`} />
-                                המסע
-                            </h2>
-                            <div className="flex space-x-2 space-x-reverse">
-                                {[...Array(totalSteps)].map((_, i) => (
-                                    <div key={i} className={`w-3 h-3 rounded-full ${i <= journeyStep ? activeFigure.color : 'bg-slate-200'}`} />
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* שמנו כאן dir="ltr" כדי לשמור על האנימציה של מסלול ההתקדמות פשוטה וחסינה משגיאות עיצוב */}
-                        <div dir="ltr" className="relative bg-slate-100 rounded-3xl p-8 flex-grow flex items-center justify-center overflow-hidden border border-slate-200 shadow-inner min-h-[400px]">
-                            
-                            <div className="absolute inset-0 opacity-10 pointer-events-none flex justify-around items-center">
-                                {activeFigure.type === 'explorer' ? (
-                                    <><Wind className="w-32 h-32" /><CloudLightning className="w-24 h-24 mt-32" /><Wind className="w-20 h-20 mb-20" /></>
-                                ) : (
-                                    <><Sparkles className="w-20 h-20" /><PenTool className="w-32 h-32" /><Sparkles className="w-16 h-16 mt-20" /></>
-                                )}
-                            </div>
-
-                            {/* פס התקדמות אפור */}
-                            <div className="absolute md:left-12 md:right-12 md:top-1/2 md:h-2 md:w-auto left-1/2 top-12 bottom-12 w-2 -translate-x-1/2 md:translate-x-0 md:-translate-y-1/2 bg-slate-300 rounded-full"></div>
-                            
-                            {/* פס התקדמות צבעוני */}
-                            <div 
-                                className={`absolute md:left-12 md:top-1/2 md:h-2 left-1/2 top-12 w-2 md:w-auto -translate-x-1/2 md:translate-x-0 md:-translate-y-1/2 ${activeFigure.color} rounded-full transition-all duration-1000 ease-in-out`}
-                                style={{ 
-                                    ...(window.innerWidth >= 768 
-                                        ? { width: `calc(${progressPercent}% - 48px)` } 
-                                        : { height: `calc(${progressPercent}% - 48px)` })
-                                }}
-                            ></div>
-
-                            {/* האייקון שזז על המסלול */}
-                            <div 
-                                className={`absolute flex items-center justify-center w-16 h-16 rounded-full ${activeFigure.darkColor} text-white shadow-xl border-4 border-white z-10 transition-all duration-1000 ease-in-out ${showEvent ? 'animate-pulse' : 'animate-bounce'}`}
-                                style={{
-                                    ...(window.innerWidth >= 768 
-                                        ? { left: `calc(3rem + ${progressPercent}% * 0.85)`, top: '50%', transform: 'translate(-50%, -50%)' }
-                                        : { top: `calc(3rem + ${progressPercent}% * 0.85)`, left: '50%', transform: 'translate(-50%, -50%)' })
-                                }}
-                            >
-                                <ActiveIcon className="w-8 h-8" />
-                            </div>
-
-                            {/* מודל האירוע שקופץ */}
-                            {showEvent && currentEvent && (
-                                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-20 animate-fade-in" dir="rtl">
-                                    <div className={`bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border-b-8 ${activeFigure.darkColor.replace('bg-', 'border-')} ${shake ? 'animate-shake' : ''}`}>
-                                        
-                                        <div className="flex items-center space-x-3 space-x-reverse mb-4 text-amber-600 font-bold">
-                                            <AlertCircle className="w-6 h-6" />
-                                            <span>אירוע!</span>
-                                        </div>
-
-                                        <p className="text-xl md:text-2xl text-slate-800 font-bold mb-6 leading-relaxed">
-                                            {currentEvent.fact}
-                                        </p>
-
-                                        <div className="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-100">
-                                            <p className="font-semibold text-slate-600 mb-4">{currentEvent.challenge}</p>
-                                            <div className="space-y-3">
-                                                {currentEvent.options.map((opt, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        onClick={() => handleAnswer(opt)}
-                                                        className={`w-full text-start p-4 rounded-xl border-2 font-bold text-slate-700 transition-all group flex justify-between items-center ${
-                                                            shake ? 'border-slate-200' : 'border-slate-200 hover:border-blue-500 hover:bg-blue-50'
-                                                        }`}
-                                                    >
-                                                        {opt}
-                                                        <ArrowForward className="w-5 h-5 text-slate-400 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {mistakes > 0 && shake && (
-                                            <p className="text-center text-red-500 font-bold animate-pulse">תשובה שגויה! נסה אפשרות אחרת.</p>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {!showEvent && journeyStep < totalSteps && (
-                                <div className="absolute bottom-8 end-8 bg-white/90 backdrop-blur px-6 py-3 rounded-full font-bold text-slate-600 shadow-sm animate-pulse" dir="rtl">
-                                    נוסעים...
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
-            };
-
-            // --- רינדור מסך תוצאה ---
-            const renderResult = () => {
-                const stars = Math.max(3 - mistakes, 1);
-
-                return (
-                    <div className="max-w-2xl mx-auto p-4 md:p-8 animate-fade-in mt-10">
-                        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-12 text-center relative overflow-hidden">
-                            
-                            <div className={`absolute top-0 end-0 w-full h-4 ${activeFigure.color}`} />
-                            
-                            <div className="flex justify-center mb-8">
-                                <div className={`p-8 rounded-full ${stars === 3 ? 'bg-amber-100 text-amber-500' : 'bg-blue-100 text-blue-500'} relative`}>
-                                    <Trophy className="w-24 h-24" />
-                                    {stars === 3 && <Sparkles className="absolute -top-2 -end-2 w-10 h-10 text-amber-400 animate-spin-slow" />}
-                                </div>
-                            </div>
-                            
-                            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-800 mb-4">
-                                המשימה הושלמה בהצלחה!
-                            </h2>
-                            
-                            <p className="text-xl text-slate-600 mb-8">
-                                הדרכת את {activeFigure.name} בהצלחה דרך ההיסטוריה.
-                            </p>
-
-                            <div className="flex justify-center space-x-2 space-x-reverse mb-10 bg-slate-50 p-6 rounded-2xl inline-flex mx-auto" dir="ltr">
-                                {[...Array(3)].map((_, i) => (
-                                    <Star 
-                                        key={i} 
-                                        className={`w-12 h-12 transition-all ms-2 duration-500 delay-${i*100} ${
-                                            i < stars ? 'fill-current text-amber-400 scale-110' : 'text-slate-200'
-                                        }`} 
-                                    />
-                                ))}
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row justify-center gap-4">
-                                <button
-                                    onClick={() => startGame(activeFigure.id)}
-                                    className="px-8 py-4 rounded-2xl border-2 border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-                                >
-                                    שחק שוב
-                                </button>
-                                <button
-                                    onClick={goHome}
-                                    className={`px-8 py-4 rounded-2xl font-extrabold text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all ${activeFigure.darkColor}`}
-                                >
-                                    חזור למסך הראשי
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                );
-            };
-
-            // --- מבנה האפליקציה הראשי ---
+        /* ═══════════════════════════════
+           START SCREEN
+           ═══════════════════════════════ */
+        function StartScreen({ onStart }) {
             return (
-                <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-200 pb-12 overflow-x-hidden">
-                    <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-                        <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-                            <button 
-                                className="flex items-center space-x-3 space-x-reverse group"
-                                onClick={goHome}
-                            >
-                                <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-2 rounded-xl group-hover:scale-105 transition-transform shadow-md">
-                                    <MapPin className="w-5 h-5" />
-                                </div>
-                                <span className="font-extrabold text-xl tracking-tight text-slate-800">סימולטור <span className="text-blue-600">היסטוריה</span></span>
-                            </button>
-                            
-                            {activeFigure && screen !== 'home' && (
-                                <div className="hidden sm:flex items-center space-x-2 space-x-reverse text-sm font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200">
-                                    {React.createElement(activeFigure.icon, { className: `w-4 h-4 ${activeFigure.color.replace('bg-', 'text-')}` })}
-                                    <span>{activeFigure.name}</span>
-                                </div>
-                            )}
-                        </div>
-                    </nav>
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'80vh',width:'100%',maxWidth:520,margin:'0 auto'}}>
+                    {/* Decorative stars */}
+                    <div style={{position:'absolute',top:40,left:'10%',color:'var(--gold)',opacity:0.4,animation:'twinkle 2.3s ease-in-out infinite'}}>✦</div>
+                    <div style={{position:'absolute',top:120,right:'8%',color:'var(--gold)',opacity:0.3,animation:'twinkle 3.1s ease-in-out infinite',fontSize:22}}>✦</div>
+                    <div style={{position:'absolute',bottom:80,left:'15%',color:'var(--gold)',opacity:0.25,animation:'twinkle 2.7s ease-in-out infinite',fontSize:14}}>✦</div>
 
-                    <main className="w-full">
-                        {screen === 'home' && renderHome()}
-                        {screen === 'prep' && renderPrep()}
-                        {screen === 'journey' && renderJourney()}
-                        {screen === 'result' && renderResult()}
-                    </main>
+                    {/* Main card */}
+                    <div style={{
+                        background:'linear-gradient(160deg, #1e2d42 0%, #0d1b2a 100%)',
+                        borderRadius:20,
+                        padding:'48px 40px',
+                        textAlign:'center',
+                        width:'100%',
+                        boxShadow:'0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,168,76,0.25)',
+                        position:'relative'
+                    }}>
+                        {/* Corner ornaments */}
+                        <div className="corner-ornament corner-tl"/>
+                        <div className="corner-ornament corner-tr"/>
+                        <div className="corner-ornament corner-bl"/>
+                        <div className="corner-ornament corner-br"/>
+
+                        {/* Logo icon */}
+                        <div style={{
+                            width:80,height:80,borderRadius:'50%',
+                            background:'linear-gradient(135deg, var(--gold), #8B6914)',
+                            display:'flex',alignItems:'center',justifyContent:'center',
+                            margin:'0 auto 24px',
+                            boxShadow:'0 8px 32px rgba(201,168,76,0.35)'
+                        }}>
+                            <IconLayers size={38} color="#fff"/>
+                        </div>
+
+                        <h1 className="font-display" style={{
+                            fontSize:42,
+                            color:'var(--gold-light)',
+                            marginBottom:6,
+                            textShadow:'0 2px 20px rgba(201,168,76,0.4)',
+                            lineHeight:1.1
+                        }}>
+                            קלפי היסטוריה
+                        </h1>
+
+                        <Divider/>
+
+                        <p style={{color:'var(--cream-dark)',fontSize:'1.05rem',lineHeight:1.7,margin:'16px 0 32px',opacity:0.85}}>
+                            שלפו קלף רמז מהחפיסה וגלו מיהי הדמות ההיסטורית, ההמצאה או המושג המפורסם.
+                        </p>
+
+                        <div style={{display:'flex',gap:16,justifyContent:'center',marginBottom:28,flexWrap:'wrap'}}>
+                            {[{n:'28',label:'קלפים'},{n:'10',label:'נקודות לכרטיס'},{n:'3',label:'אפשרויות'}].map(({n,label})=>(
+                                <div key={n} style={{
+                                    background:'rgba(201,168,76,0.1)',
+                                    border:'1px solid rgba(201,168,76,0.25)',
+                                    borderRadius:10,padding:'10px 18px',textAlign:'center'
+                                }}>
+                                    <div className="font-display" style={{color:'var(--gold)',fontSize:24,fontWeight:700}}>{n}</div>
+                                    <div style={{color:'var(--cream-dark)',fontSize:'0.78rem',opacity:0.7}}>{label}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={onStart}
+                            style={{
+                                background:'linear-gradient(135deg, var(--gold) 0%, #8B6914 100%)',
+                                color:'var(--navy)',
+                                border:'none',
+                                borderRadius:12,
+                                padding:'16px 48px',
+                                fontSize:'1.2rem',
+                                fontWeight:800,
+                                cursor:'pointer',
+                                fontFamily:'DM Sans, sans-serif',
+                                boxShadow:'0 6px 0 #5a4208, 0 12px 32px rgba(201,168,76,0.3)',
+                                transition:'all 0.15s ease',
+                                letterSpacing:'0.03em'
+                            }}
+                            onMouseOver={e=>{e.target.style.transform='translateY(-2px)';e.target.style.boxShadow='0 8px 0 #5a4208, 0 16px 40px rgba(201,168,76,0.35)';}}
+                            onMouseOut={e=>{e.target.style.transform='translateY(0)';e.target.style.boxShadow='0 6px 0 #5a4208, 0 12px 32px rgba(201,168,76,0.3)';}}
+                        >
+                            התחילו לשחק ←
+                        </button>
+                    </div>
                 </div>
             );
         }
 
-        // טעינת האפליקציה
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<HistorySimulator />);
+        /* ═══════════════════════════════
+           PLAYING SCREEN
+           ═══════════════════════════════ */
+        function PlayingScreen({ questions, currentQIndex, score, cardStatus, selectedName, isCorrect, currentOptions, onDrawCard, onNameClick, onNextCard }) {
+            const q = questions[currentQIndex];
+            const total = questions.length;
+            const progress = (currentQIndex / total) * 100;
+            const isFlipped = cardStatus !== 'hidden';
+
+            return (
+                <div style={{width:'100%',maxWidth:900,margin:'0 auto'}}>
+
+                    {/* Header bar */}
+                    <div style={{
+                        display:'flex',alignItems:'center',justifyContent:'space-between',
+                        background:'rgba(13,27,42,0.85)',
+                        backdropFilter:'blur(12px)',
+                        border:'1px solid rgba(201,168,76,0.2)',
+                        borderRadius:14,
+                        padding:'14px 20px',
+                        marginBottom:20,
+                        gap:16
+                    }}>
+                        <div style={{display:'flex',alignItems:'center',gap:8,color:'var(--cream-dark)',fontSize:'0.95rem'}}>
+                            <IconLayers size={18} color="var(--gold)" opacity={0.8}/>
+                            <span>קלף <span style={{color:'var(--gold)',fontWeight:700}}>{currentQIndex+1}</span> מתוך {total}</span>
+                        </div>
+
+                        {/* Progress */}
+                        <div style={{flex:1,maxWidth:200}}>
+                            <div className="progress-bar">
+                                <div className="progress-fill" style={{width:`${progress}%`}}/>
+                            </div>
+                        </div>
+
+                        {/* Score */}
+                        <div style={{
+                            display:'flex',alignItems:'center',gap:6,
+                            background:'rgba(201,168,76,0.12)',
+                            border:'1px solid rgba(201,168,76,0.3)',
+                            borderRadius:10,
+                            padding:'8px 16px'
+                        }}>
+                            <IconStar size={18} filled={true} color="var(--gold)"/>
+                            <span className="font-display" style={{color:'var(--gold)',fontSize:'1.3rem',fontWeight:700}}>{score}</span>
+                            <span style={{color:'var(--cream-dark)',fontSize:'0.8rem',opacity:0.6}}>נק'</span>
+                        </div>
+                    </div>
+
+                    {/* Play area */}
+                    <div style={{display:'flex',gap:24,flexWrap:'wrap',alignItems:'stretch'}}>
+
+                        {/* ── Card Column ── */}
+                        <div style={{flex:'1 1 300px',display:'flex',flexDirection:'column',alignItems:'center'}}>
+                            <p style={{color:'var(--cream-dark)',opacity:0.7,fontSize:'0.9rem',marginBottom:14,textAlign:'center'}}>
+                                {cardStatus === 'hidden' ? '▼ לחצו על הקלף לגילוי הרמז' : '📜 קראו את הרמז בעיון'}
+                            </p>
+
+                            {/* 3D Card */}
+                            <div
+                                className={`card-scene deck-stack ${cardStatus==='hidden'?'card-hover':''}`}
+                                style={{width:'100%',maxWidth:280,aspectRatio:'3/4',cursor:cardStatus==='hidden'?'pointer':'default',position:'relative'}}
+                                onClick={cardStatus==='hidden'?onDrawCard:undefined}
+                            >
+                                <div className={`card-inner ${isFlipped?'flipped':''}`}>
+
+                                    {/* BACK */}
+                                    <div className="card-face card-back" style={{
+                                        background:'linear-gradient(145deg, #1a2d42 0%, #0d1b2a 100%)',
+                                        border:'3px solid rgba(201,168,76,0.5)',
+                                        display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+                                        overflow:'hidden',position:'relative'
+                                    }}>
+                                        <div className="card-shine" style={{position:'absolute',inset:0,borderRadius:14}}/>
+                                        {/* Pattern */}
+                                        <svg style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:0.06}} viewBox="0 0 200 280" preserveAspectRatio="xMidYMid slice">
+                                            {[0,1,2,3,4,5].map(i=>[0,1,2,3,4].map(j=>(
+                                                <polygon key={`${i}-${j}`} points={`${i*40+20},${j*50+10} ${i*40+30},${j*50+30} ${i*40+10},${j*50+30}`} fill="none" stroke="#C9A84C" strokeWidth="1"/>
+                                            )))}
+                                        </svg>
+                                        <div style={{
+                                            width:80,height:80,borderRadius:'50%',
+                                            background:'rgba(201,168,76,0.15)',
+                                            border:'2px solid rgba(201,168,76,0.4)',
+                                            display:'flex',alignItems:'center',justifyContent:'center',
+                                            marginBottom:16,position:'relative',zIndex:1
+                                        }}>
+                                            <span style={{fontSize:38,filter:'drop-shadow(0 2px 8px rgba(201,168,76,0.5))'}}>?</span>
+                                        </div>
+                                        <p className="font-display" style={{color:'rgba(201,168,76,0.6)',fontSize:'0.8rem',letterSpacing:'0.2em',position:'relative',zIndex:1}}>
+                                            היסטוריה
+                                        </p>
+
+                                        {/* Corner ornaments */}
+                                        <div style={{position:'absolute',top:10,right:10,color:'rgba(201,168,76,0.5)',fontSize:18}}>✦</div>
+                                        <div style={{position:'absolute',bottom:10,left:10,color:'rgba(201,168,76,0.5)',fontSize:18}}>✦</div>
+                                    </div>
+
+                                    {/* FRONT (clue) */}
+                                    <div className="card-face card-front" style={{
+                                        background:'var(--cream)',
+                                        border:'3px solid var(--gold)',
+                                        display:'flex',flexDirection:'column',
+                                        overflow:'hidden',position:'relative'
+                                    }}>
+                                        {/* Header strip */}
+                                        <div style={{
+                                            background:'linear-gradient(90deg, var(--navy) 0%, var(--navy-mid) 100%)',
+                                            padding:'10px 16px',
+                                            textAlign:'center',
+                                            borderBottom:'2px solid var(--gold)',
+                                            flexShrink:0
+                                        }}>
+                                            <span className="font-display" style={{color:'var(--gold)',fontSize:'0.8rem',letterSpacing:'0.2em'}}>
+                                                ✦ קלף רמז ✦
+                                            </span>
+                                        </div>
+
+                                        {/* Clue text */}
+                                        <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 20px',position:'relative'}}>
+                                            <svg style={{position:'absolute',top:10,right:10,opacity:0.08,width:60,height:60}} viewBox="0 0 24 24"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" fill="var(--navy)"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" fill="var(--navy)"/></svg>
+                                            <p style={{
+                                                fontSize:'1.1rem',fontWeight:600,
+                                                color:cardStatus==='answered'?'rgba(13,27,42,0.3)':'var(--navy)',
+                                                textAlign:'center',lineHeight:1.6,
+                                                transition:'color 0.3s ease',
+                                                direction:'ltr',fontStyle:'italic',
+                                                position:'relative',zIndex:1
+                                            }}>
+                                                "{q.clue}"
+                                            </p>
+                                        </div>
+
+                                        {/* Feedback overlay */}
+                                        {cardStatus === 'answered' && (
+                                            <div className="feedback-overlay" style={{
+                                                position:'absolute',inset:0,
+                                                background:'rgba(245,237,214,0.97)',
+                                                borderRadius:14,
+                                                display:'flex',flexDirection:'column',
+                                                alignItems:'center',justifyContent:'center',
+                                                padding:24,textAlign:'center',
+                                                zIndex:10
+                                            }}>
+                                                {isCorrect ? (
+                                                    <>
+                                                        <div style={{
+                                                            width:72,height:72,borderRadius:'50%',
+                                                            background:'rgba(40,167,69,0.15)',
+                                                            display:'flex',alignItems:'center',justifyContent:'center',
+                                                            marginBottom:12
+                                                        }}>
+                                                            <IconCheck size={40} color="#28a745"/>
+                                                        </div>
+                                                        <p className="font-display" style={{color:'#155724',fontSize:'1.5rem',fontWeight:900,marginBottom:4}}>כל הכבוד!</p>
+                                                        <p style={{color:'#28a745',fontWeight:700,fontSize:'1.1rem',marginBottom:20}}>+10 נקודות 🌟</p>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div style={{
+                                                            width:72,height:72,borderRadius:'50%',
+                                                            background:'rgba(220,53,69,0.12)',
+                                                            display:'flex',alignItems:'center',justifyContent:'center',
+                                                            marginBottom:12
+                                                        }}>
+                                                            <IconX size={40} color="#dc3545"/>
+                                                        </div>
+                                                        <p className="font-display" style={{color:'#721c24',fontSize:'1.3rem',fontWeight:900,marginBottom:4}}>לא בדיוק</p>
+                                                        <p style={{color:'#721c24',fontWeight:700,fontSize:'0.85rem',marginBottom:4}}>התשובה הנכונה היא:</p>
+                                                        <p style={{color:'var(--navy)',fontWeight:800,fontSize:'1rem',marginBottom:20,direction:'ltr'}}>{q.name}</p>
+                                                    </>
+                                                )}
+                                                <button
+                                                    onClick={e=>{e.stopPropagation();onNextCard();}}
+                                                    style={{
+                                                        background:'linear-gradient(135deg, var(--gold) 0%, #8B6914 100%)',
+                                                        color:'var(--navy)',border:'none',borderRadius:10,
+                                                        padding:'12px 24px',fontWeight:800,fontSize:'0.95rem',
+                                                        cursor:'pointer',fontFamily:'DM Sans, sans-serif',
+                                                        boxShadow:'0 4px 0 #5a4208',
+                                                        transition:'all 0.15s'
+                                                    }}
+                                                    onMouseOver={e=>{e.target.style.transform='translateY(-2px)';}}
+                                                    onMouseOut={e=>{e.target.style.transform='translateY(0)';}}
+                                                >
+                                                    {currentQIndex < questions.length - 1 ? 'קלף הבא ←' : 'סיום המשחק ★'}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Footer */}
+                                        <div style={{padding:'8px 16px',borderTop:'1px solid rgba(201,168,76,0.3)',textAlign:'center',flexShrink:0}}>
+                                            <span style={{color:'rgba(13,27,42,0.35)',fontSize:'0.7rem',letterSpacing:'0.1em'}}>
+                                                {currentQIndex+1} / {total}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ── Answer Options Column ── */}
+                        <div style={{flex:'1 1 260px',display:'flex',flexDirection:'column',justifyContent:'center'}}>
+                            <p style={{
+                                color:'var(--cream-dark)',
+                                opacity: cardStatus === 'hidden' ? 0.35 : 0.8,
+                                fontSize:'0.9rem',marginBottom:14,textAlign:'center',
+                                transition:'opacity 0.4s ease'
+                            }}>
+                                {cardStatus === 'hidden' ? '⬅ גלו קודם את הרמז' : 'בחרו את התשובה הנכונה'}
+                            </p>
+
+                            <div style={{
+                                display:'flex',flexDirection:'column',gap:12,
+                                pointerEvents: cardStatus === 'hidden' ? 'none' : 'auto',
+                                opacity: cardStatus === 'hidden' ? 0.35 : 1,
+                                transition: 'opacity 0.4s ease'
+                            }}>
+                                {currentOptions.map((name, idx) => {
+                                    let cls = '';
+                                    if (cardStatus === 'answered') {
+                                        if (name === q.name) cls = 'correct';
+                                        else if (name === selectedName && !isCorrect) cls = 'wrong';
+                                        else cls = 'dimmed';
+                                    }
+                                    return (
+                                        <button
+                                            key={name}
+                                            className={`answer-btn ${cls}`}
+                                            disabled={cardStatus === 'answered'}
+                                            onClick={() => onNameClick(name)}
+                                        >
+                                            <span style={{direction:'ltr',display:'flex',alignItems:'center',gap:8}}>
+                                                {cls === 'correct' && <IconCheck size={20} color="#28a745"/>}
+                                                {cls === 'wrong' && <IconX size={20} color="#dc3545"/>}
+                                                {name}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        /* ═══════════════════════════════
+           END SCREEN
+           ═══════════════════════════════ */
+        function EndScreen({ score, total, onRestart }) {
+            const maxScore = total * 10;
+            const pct = score / maxScore;
+            const msg = pct === 1
+                ? { text: 'ניצחון מושלם! אתם גאוני ההיסטוריה! 🌟', color: '#C9A84C' }
+                : pct >= 0.6
+                ? { text: 'עבודה מצוינת! היסטוריונים-על! 👑', color: '#28a745' }
+                : { text: 'ניסיון טוב! ערבבו ושחקו שוב! 📚', color: '#6c757d' };
+
+            return (
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'80vh',width:'100%',maxWidth:500,margin:'0 auto'}}>
+                    <div style={{
+                        background:'linear-gradient(160deg, #1e2d42 0%, #0d1b2a 100%)',
+                        borderRadius:20,padding:'48px 40px',textAlign:'center',width:'100%',
+                        boxShadow:'0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,168,76,0.25)',
+                        position:'relative'
+                    }}>
+                        <div className="corner-ornament corner-tl"/>
+                        <div className="corner-ornament corner-tr"/>
+                        <div className="corner-ornament corner-bl"/>
+                        <div className="corner-ornament corner-br"/>
+
+                        <div className="trophy-anim" style={{fontSize:80,marginBottom:16,display:'block'}}>🏆</div>
+
+                        <h2 className="font-display" style={{color:'var(--gold-light)',fontSize:36,marginBottom:8}}>
+                            החפיסה הושלמה!
+                        </h2>
+                        <Divider/>
+
+                        <div style={{margin:'24px 0'}}>
+                            <p style={{color:'var(--cream-dark)',opacity:0.7,marginBottom:8}}>ניקוד סופי</p>
+                            <p className="font-display" style={{fontSize:72,color:'var(--gold)',fontWeight:900,lineHeight:1,textShadow:'0 4px 24px rgba(201,168,76,0.4)'}}>{score}</p>
+                            <p style={{color:'var(--cream-dark)',opacity:0.5}}>מתוך {maxScore} נקודות</p>
+                        </div>
+
+                        {/* Stars */}
+                        <div style={{display:'flex',justifyContent:'center',gap:8,marginBottom:20}}>
+                            {[1,2,3].map(i => (
+                                <IconStar key={i} size={32}
+                                    filled={pct >= i/3}
+                                    color={pct >= i/3 ? 'var(--gold)' : 'rgba(201,168,76,0.2)'}
+                                />
+                            ))}
+                        </div>
+
+                        <p style={{color:msg.color,fontWeight:700,marginBottom:28}}>{msg.text}</p>
+
+                        <button
+                            onClick={onRestart}
+                            style={{
+                                background:'linear-gradient(135deg, var(--gold) 0%, #8B6914 100%)',
+                                color:'var(--navy)',border:'none',borderRadius:12,
+                                padding:'16px 48px',fontSize:'1.1rem',fontWeight:800,
+                                cursor:'pointer',fontFamily:'DM Sans, sans-serif',
+                                boxShadow:'0 6px 0 #5a4208, 0 12px 32px rgba(201,168,76,0.3)',
+                                transition:'all 0.15s ease',display:'flex',
+                                alignItems:'center',gap:10,margin:'0 auto'
+                            }}
+                            onMouseOver={e=>{e.currentTarget.style.transform='translateY(-2px)';}}
+                            onMouseOut={e=>{e.currentTarget.style.transform='translateY(0)';}}
+                        >
+                            <IconRefresh size={20}/> ערבבו ושחקו שוב
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        /* ═══════════════════════════════
+           MAIN APP
+           ═══════════════════════════════ */
+        function App() {
+            const [gameState, setGameState] = useState('start');
+            const [cardStatus, setCardStatus] = useState('hidden');
+            const [questions, setQuestions] = useState([]);
+            const [currentQIndex, setCurrentQIndex] = useState(0);
+            const [score, setScore] = useState(0);
+            const [selectedName, setSelectedName] = useState(null);
+            const [isCorrect, setIsCorrect] = useState(false);
+            const [currentOptions, setCurrentOptions] = useState([]);
+
+            const startGame = () => {
+                const shuffled = [...gameData].sort(() => 0.5 - Math.random());
+                setQuestions(shuffled);
+                setCurrentQIndex(0);
+                setScore(0);
+                setCardStatus('hidden');
+                setSelectedName(null);
+                setCurrentOptions(generateOptions(shuffled[0].name));
+                setGameState('playing');
+            };
+
+            const handleDrawCard = () => { if (cardStatus === 'hidden') setCardStatus('revealed'); };
+
+            const handleNameClick = (name) => {
+                if (cardStatus !== 'revealed') return;
+                const correct = name === questions[currentQIndex].name;
+                setSelectedName(name);
+                setIsCorrect(correct);
+                setCardStatus('answered');
+                if (correct) setScore(p => p + 10);
+            };
+
+            const handleNextCard = () => {
+                if (currentQIndex < questions.length - 1) {
+                    const next = currentQIndex + 1;
+                    setCurrentQIndex(next);
+                    setCardStatus('hidden');
+                    setSelectedName(null);
+                    setCurrentOptions(generateOptions(questions[next].name));
+                } else {
+                    setGameState('end');
+                }
+            };
+
+            return (
+                <div style={{padding:'16px',width:'100%'}}>
+                    {gameState === 'start' && <StartScreen onStart={startGame}/>}
+                    {gameState === 'playing' && (
+                        <PlayingScreen
+                            questions={questions}
+                            currentQIndex={currentQIndex}
+                            score={score}
+                            cardStatus={cardStatus}
+                            selectedName={selectedName}
+                            isCorrect={isCorrect}
+                            currentOptions={currentOptions}
+                            onDrawCard={handleDrawCard}
+                            onNameClick={handleNameClick}
+                            onNextCard={handleNextCard}
+                        />
+                    )}
+                    {gameState === 'end' && (
+                        <EndScreen score={score} total={questions.length} onRestart={startGame}/>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
     </script>
 </body>
 </html>
